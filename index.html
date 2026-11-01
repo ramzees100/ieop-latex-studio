@@ -6,102 +6,76 @@
 <title>IEOP LaTeX Studio</title>
 <style>
   * { box-sizing: border-box; }
-
   body {
     margin: 0;
     background: #eef2f6;
     color: #203047;
     font-family: Arial, sans-serif;
   }
-
   header {
     padding: 20px 24px;
     background: #122b46;
     color: white;
   }
-
   header h1 { margin: 0; font-size: 24px; }
-
-  header p {
-    margin: 8px 0 0;
-    color: #c4d5e5;
-    font-size: 14px;
-  }
-
-  .toolbar {
+  header p { margin: 8px 0 0; color: #c4d5e5; }
+  .toolbar, .connection {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    padding: 16px 24px;
+    padding: 14px 24px;
     background: white;
     border-bottom: 1px solid #d8e1eb;
   }
-
-  .toolbar input {
-    flex: 1;
-    min-width: 180px;
+  input {
     padding: 10px;
     border: 1px solid #cad5e2;
     border-radius: 6px;
     font-size: 15px;
+    min-width: 180px;
   }
-
-  button {
+  #projectName { flex: 1; }
+  #token { width: 290px; max-width: 100%; }
+  button, .button-link {
     padding: 11px 16px;
     border: 1px solid #cad5e2;
     border-radius: 6px;
     background: white;
     color: #203047;
-    font-size: 14px;
+    font: 14px Arial, sans-serif;
     cursor: pointer;
+    text-decoration: none;
   }
-
-  button:hover { background: #edf3f9; }
-
-  .primary {
-    background: #176b52;
-    border-color: #176b52;
-    color: white;
-  }
-
+  button:hover, .button-link:hover { background: #edf3f9; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .primary { background: #176b52; border-color: #176b52; color: white; }
   .primary:hover { background: #10533f; }
-
-  button:focus-visible,
-  input:focus-visible,
-  textarea:focus-visible {
-    outline: 3px solid #79a9dc;
-    outline-offset: 2px;
-  }
-
+  :focus-visible { outline: 3px solid #79a9dc; outline-offset: 2px; }
   .notice {
     padding: 12px 24px;
     background: #fff6dd;
     color: #705817;
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.6;
   }
-
+  .hint { color: #526579; font-size: 12px; }
   main {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    min-height: 70vh;
   }
-
   .panel { min-width: 0; }
-
   .panel-title {
     margin: 0;
     padding: 14px 20px;
     background: #e4ebf3;
     font-size: 14px;
-    font-weight: bold;
   }
-
   textarea {
     display: block;
     width: 100%;
-    min-height: 70vh;
+    height: 72vh;
+    min-height: 420px;
     padding: 22px;
     border: none;
     resize: vertical;
@@ -110,121 +84,117 @@
     font: 14px/1.7 Consolas, monospace;
     tab-size: 2;
   }
-
-  .preview-panel {
-    border-left: 1px solid #ccd7e3;
+  .preview-panel { border-left: 1px solid #ccd7e3; }
+  #pdfViewer {
+    display: block;
+    width: 100%;
+    height: 72vh;
+    min-height: 420px;
+    border: 0;
+    background: #dce3eb;
   }
-
-  .preview-wrap { padding: 24px; }
-
-  #preview {
-    min-height: 60vh;
-    max-width: 800px;
-    margin: auto;
-    padding: 40px;
-    background: white;
-    box-shadow: 0 3px 14px #17304d15;
-    color: #222;
-    font: 16px/1.8 Georgia, serif;
-    overflow-wrap: anywhere;
-  }
-
-  #preview h1 {
+  #emptyPreview {
+    padding: 70px 30px;
     text-align: center;
-    font-size: 27px;
-    line-height: 1.4;
+    color: #526579;
+    line-height: 1.8;
   }
-
-  #preview h2 { font-size: 21px; }
-
-  #preview p { white-space: pre-wrap; }
-
-  .author { text-align: center; }
-
   footer {
     padding: 15px 24px;
     background: white;
-    color: #526579;
     font-size: 13px;
-    line-height: 1.6;
+    line-height: 1.7;
   }
-
+  #status { white-space: pre-wrap; overflow-wrap: anywhere; }
+  #status.error { color: #a32222; }
+  #status.success { color: #176b52; }
+  [hidden] { display: none !important; }
   @media (max-width: 800px) {
     main { grid-template-columns: 1fr; }
-    textarea { min-height: 420px; }
     .preview-panel { border-left: none; }
-    .preview-wrap { padding: 15px; }
-    #preview { padding: 25px; }
+    .toolbar, .connection { padding: 12px; }
   }
 </style>
 </head>
-
 <body>
+
 <header>
   <h1>IEOP LaTeX Studio</h1>
   <p>A workspace for scientific writing</p>
 </header>
 
 <div class="toolbar">
-  <input
-    id="projectName"
-    aria-label="Project name"
-    value="My first document"
-  >
+  <input id="projectName" aria-label="Project name"
+         value="My first document">
   <button id="importButton">Import .tex</button>
-  <button id="downloadButton">Download .tex</button>
-  <button id="previewButton" class="primary">
-    Update text preview
-  </button>
+  <button id="sourceButton">Download .tex</button>
+  <button id="compileButton" class="primary">Compile</button>
+  <button id="pdfButton" disabled>Download PDF</button>
+  <a id="openPdf" class="button-link" target="_blank"
+     rel="noopener" hidden>Open PDF</a>
+</div>
+
+<div class="connection">
+  <label for="token">Compiler access token:</label>
+  <input id="token" type="password"
+         placeholder="Enter your private token"
+         autocomplete="off" spellcheck="false">
+  <button id="clearToken">Clear token</button>
+  <span class="hint">
+    The token is kept only until this page is closed or refreshed.
+  </span>
 </div>
 
 <div class="notice">
-  <strong>Editor prototype:</strong>
-  The preview supports basic titles, authors, and sections.
-  Equations and other commands remain as source text.
-  PDF compilation and user accounts are not connected yet.
+  Clicking <strong>Compile</strong> sends your LaTeX source to your
+  Render compiler to generate a PDF. This version supports one
+  self-contained .tex file using pdfLaTeX; additional images,
+  bibliography files, and custom class uploads are not supported yet.
+  The free server may take about a minute to wake up.
 </div>
 
 <main>
   <section class="panel" aria-label="Source editor">
     <h2 class="panel-title">main.tex — LaTeX source</h2>
-    <textarea
-      id="editor"
-      aria-label="LaTeX source"
-      spellcheck="false"
-    ></textarea>
+    <textarea id="editor" aria-label="LaTeX source"
+              spellcheck="false"></textarea>
   </section>
 
-  <section class="panel preview-panel" aria-label="Text preview">
-    <h2 class="panel-title">Text preview — not a compiled PDF</h2>
-    <div class="preview-wrap">
-      <article id="preview"></article>
+  <section class="panel preview-panel" aria-label="PDF preview">
+    <h2 id="previewTitle" class="panel-title">PDF preview</h2>
+    <div id="emptyPreview">
+      <strong>Your compiled PDF will appear here.</strong><br>
+      Enter your compiler token, then click Compile.
     </div>
+    <iframe id="pdfViewer" title="Compiled PDF preview" hidden></iframe>
   </section>
 </main>
 
 <footer>
-  <span id="status" role="status">Workspace ready.</span>
-  <br>
-  Documents save in this browser only.
-  Download your source to keep a backup.
+  <div id="status" role="status" aria-live="polite">Workspace ready.</div>
+  <div class="hint">
+    Source saves in this browser only. Download a backup.
+    Accounts and cloud project storage are not connected yet.
+  </div>
 </footer>
 
 <input id="fileInput" type="file" accept=".tex,text/plain" hidden>
 
 <script>
-  "use strict";
+"use strict";
 
-  const editor = document.getElementById("editor");
-  const projectName = document.getElementById("projectName");
-  const preview = document.getElementById("preview");
-  const status = document.getElementById("status");
-  const fileInput = document.getElementById("fileInput");
+const COMPILER = "https://ieop-latex-compiler.onrender.com";
+const storageKey = "ieop-latex-studio-v1";
+const $ = id => document.getElementById(id);
 
-  const storageKey = "ieop-latex-studio-v1";
-  let saveAvailable = true;
+const editor = $("editor");
+const projectName = $("projectName");
+let pdfUrl = null;
+let compiledSource = null;
+let compiling = false;
+let savingWorks = true;
 
-  const starter = String.raw`\documentclass[12pt]{article}
+const starter = String.raw`\documentclass[12pt]{article}
 \usepackage{amsmath}
 \usepackage[margin=1in]{geometry}
 
@@ -238,8 +208,6 @@
 \section{Introduction}
 Welcome to IEOP LaTeX Studio.
 
-This is the beginning of your scientific writing project.
-
 \section{An Example Equation}
 The wavelength and frequency of light are related by
 \begin{equation}
@@ -251,187 +219,276 @@ Write your conclusion here.
 
 \end{document}`;
 
-  editor.value = starter;
+editor.value = starter;
+
+try {
+  const saved = JSON.parse(localStorage.getItem(storageKey));
+  if (saved && typeof saved.source === "string") {
+    editor.value = saved.source;
+  }
+  if (saved && typeof saved.name === "string") {
+    projectName.value = saved.name;
+  }
+} catch {
+  savingWorks = false;
+}
+
+function message(text, kind = "") {
+  $("status").textContent = text;
+  $("status").className = kind;
+}
+
+function saveDocument() {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify({
+      name: projectName.value,
+      source: editor.value
+    }));
+    savingWorks = true;
+  } catch {
+    savingWorks = false;
+  }
+}
+
+function updatePdfState() {
+  const current = pdfUrl !== null && editor.value === compiledSource;
+  $("pdfButton").disabled = !current || compiling;
+  $("openPdf").hidden = !current;
+  $("previewTitle").textContent = pdfUrl && !current
+    ? "PDF preview — previous compilation; compile your changes"
+    : "PDF preview";
+}
+
+function sourceChanged() {
+  saveDocument();
+  updatePdfState();
+  if (!compiling) {
+    message(savingWorks
+      ? "Saved in this browser. Click Compile to update the PDF."
+      : "Browser saving is unavailable. Download a source backup.");
+  }
+}
+
+function safeName() {
+  return projectName.value
+    .replace(/[^a-zA-Z0-9 _-]/g, "")
+    .trim() || "document";
+}
+
+function download(url, filename) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+async function compileDocument() {
+  if (compiling) return;
+
+  const token = $("token").value.trim();
+  const source = editor.value;
+
+  if (!token) {
+    message("Enter your compiler access token first.", "error");
+    $("token").focus();
+    return;
+  }
+
+  if (!source.trim()) {
+    message("Enter a LaTeX document first.", "error");
+    return;
+  }
+
+  if (new TextEncoder().encode(source).length > 150000) {
+    message("Source exceeds the compiler's 150 KB limit.", "error");
+    return;
+  }
+
+  compiling = true;
+  $("compileButton").disabled = true;
+  $("compileButton").textContent = "Compiling…";
+  updatePdfState();
+  saveDocument();
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 150000);
 
   try {
-    const saved = JSON.parse(localStorage.getItem(storageKey));
+    message("Connecting to the compiler. An idle server may need a minute to wake up.");
 
-    if (saved && typeof saved.source === "string") {
-      editor.value = saved.source;
+    // Wake the server without sending the source or token.
+    const health = await fetch(COMPILER + "/", {
+      signal: controller.signal,
+      credentials: "omit",
+      cache: "no-store"
+    });
+
+    if (!health.ok) {
+      throw new Error("The compiler is not ready. Please try again shortly.");
     }
 
-    if (saved && typeof saved.name === "string") {
-      projectName.value = saved.name;
+    message("Compiling your LaTeX document…");
+
+    const response = await fetch(COMPILER + "/compile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ source }),
+      signal: controller.signal,
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "error"
+    });
+
+    if (!response.ok) {
+      let detail = {};
+      try {
+        detail = await response.json();
+      } catch {}
+
+      if (response.status === 401) {
+        throw new Error("Access denied. Check your compiler token.");
+      }
+
+      throw new Error(detail.error ||
+        "Compilation failed (HTTP " + response.status + ").");
     }
+
+    const type = response.headers.get("Content-Type") || "";
+    if (!type.toLowerCase().includes("application/pdf")) {
+      throw new Error("The server did not return a PDF.");
+    }
+
+    const blob = await response.blob();
+    if (!blob.size) {
+      throw new Error("The server returned an empty PDF.");
+    }
+
+    const previousUrl = pdfUrl;
+    pdfUrl = URL.createObjectURL(blob);
+    compiledSource = source;
+
+    $("pdfViewer").src = pdfUrl;
+    $("pdfViewer").hidden = false;
+    $("emptyPreview").hidden = true;
+    $("openPdf").href = pdfUrl;
+
+    if (previousUrl) {
+      setTimeout(() => URL.revokeObjectURL(previousUrl), 1000);
+    }
+
+    message(
+      editor.value === source
+        ? "PDF compiled successfully. You can preview or download it."
+        : "PDF compiled, but you edited the source during compilation. Compile again to include those changes.",
+      "success"
+    );
+
+    if (!savingWorks) {
+      $("status").textContent +=
+        " Browser saving is unavailable; download a source backup.";
+    }
+  } catch (error) {
+    if (error.name === "AbortError") {
+      message(
+        "The request timed out. The server may still be waking up. Try Compile again.",
+        "error"
+      );
+    } else if (error instanceof TypeError) {
+      message(
+        "Could not reach the compiler. Check your connection and Render service status, then try again.",
+        "error"
+      );
+    } else {
+      message(error.message || "Compilation failed.", "error");
+    }
+  } finally {
+    clearTimeout(timeout);
+    compiling = false;
+    $("compileButton").disabled = false;
+    $("compileButton").textContent = "Compile";
+    updatePdfState();
+  }
+}
+
+editor.addEventListener("input", sourceChanged);
+projectName.addEventListener("input", saveDocument);
+
+editor.addEventListener("keydown", event => {
+  if (event.key === "Tab") {
+    event.preventDefault();
+    editor.setRangeText(
+      "  ", editor.selectionStart, editor.selectionEnd, "end"
+    );
+    sourceChanged();
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    compileDocument();
+  }
+});
+
+$("compileButton").addEventListener("click", compileDocument);
+
+$("clearToken").addEventListener("click", () => {
+  $("token").value = "";
+  message("Token cleared from the input.");
+});
+
+$("sourceButton").addEventListener("click", () => {
+  const blob = new Blob([editor.value], {
+    type: "text/plain;charset=utf-8"
+  });
+  const url = URL.createObjectURL(blob);
+  download(url, safeName() + ".tex");
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+$("pdfButton").addEventListener("click", () => {
+  if (pdfUrl && editor.value === compiledSource) {
+    download(pdfUrl, safeName() + ".pdf");
+  }
+});
+
+$("importButton").addEventListener("click", () => {
+  $("fileInput").click();
+});
+
+$("fileInput").addEventListener("change", async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    if (file.size > 150000) {
+      message("Please select a .tex file no larger than 150 KB.", "error");
+      return;
+    }
+
+    if (!confirm("Replace the current source? Download a backup first if needed.")) {
+      return;
+    }
+
+    editor.value = await file.text();
+    sourceChanged();
   } catch {
-    saveAvailable = false;
+    message("The source file could not be imported.", "error");
+  } finally {
+    event.target.value = "";
   }
+});
 
-  function saveDocument() {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify({
-        name: projectName.value,
-        source: editor.value
-      }));
+window.addEventListener("pagehide", () => {
+  $("token").value = "";
+});
 
-      saveAvailable = true;
-      status.textContent =
-        "Saved in this browser. Update the preview to see changes.";
-    } catch {
-      saveAvailable = false;
-      status.textContent =
-        "Browser saving is unavailable. Download your source to keep it.";
-    }
-  }
-
-  function addPreviewElement(tag, text, className) {
-    const element = document.createElement(tag);
-    element.textContent = text;
-
-    if (className) {
-      element.className = className;
-    }
-
-    preview.appendChild(element);
-  }
-
-  function updatePreview() {
-    const source = editor.value;
-    preview.replaceChildren();
-
-    const title = source.match(/\\title\{([^}]*)\}/);
-    const author = source.match(/\\author\{([^}]*)\}/);
-
-    if (title) {
-      addPreviewElement("h1", title[1]);
-    }
-
-    if (author) {
-      addPreviewElement("p", author[1], "author");
-    }
-
-    const opening = "\\begin{document}";
-    const closing = "\\end{document}";
-    const start = source.indexOf(opening);
-
-    let body = start >= 0
-      ? source.slice(start + opening.length)
-      : source;
-
-    const end = body.indexOf(closing);
-
-    if (end >= 0) {
-      body = body.slice(0, end);
-    }
-
-    body = body.replace(/\\maketitle/g, "");
-
-    const parts = body.split(/(\\section\*?\{[^}]*\})/g);
-
-    for (const part of parts) {
-      const section = part.match(/^\\section\*?\{([^}]*)\}$/);
-
-      if (section) {
-        addPreviewElement("h2", section[1]);
-      } else if (part.trim()) {
-        addPreviewElement("p", part.trim());
-      }
-    }
-
-    if (!preview.childNodes.length) {
-      addPreviewElement("p", "Your document preview will appear here.");
-    }
-
-    status.textContent = saveAvailable
-      ? "Text preview updated. Your source saves in this browser."
-      : "Text preview updated. Download your source; browser saving is unavailable.";
-  }
-
-  editor.addEventListener("input", saveDocument);
-  projectName.addEventListener("input", saveDocument);
-
-  editor.addEventListener("keydown", function (event) {
-    if (event.key === "Tab") {
-      event.preventDefault();
-
-      editor.setRangeText(
-        "  ",
-        editor.selectionStart,
-        editor.selectionEnd,
-        "end"
-      );
-
-      saveDocument();
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      event.preventDefault();
-      updatePreview();
-    }
-  });
-
-  document.getElementById("previewButton")
-    .addEventListener("click", updatePreview);
-
-  document.getElementById("downloadButton")
-    .addEventListener("click", function () {
-      const blob = new Blob([editor.value], {
-        type: "text/plain;charset=utf-8"
-      });
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      const safeName = projectName.value
-        .replace(/[^a-zA-Z0-9 _-]/g, "")
-        .trim() || "main";
-
-      link.href = url;
-      link.download = safeName + ".tex";
-
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      setTimeout(function () {
-        URL.revokeObjectURL(url);
-      }, 1000);
-    });
-
-  document.getElementById("importButton")
-    .addEventListener("click", function () {
-      fileInput.click();
-    });
-
-  fileInput.addEventListener("change", async function () {
-    const file = fileInput.files[0];
-
-    if (!file) return;
-
-    try {
-      if (file.size > 1000000) {
-        status.textContent = "Please select a file smaller than 1 MB.";
-        return;
-      }
-
-      const replace = window.confirm(
-        "Replace the current source? Download a backup first if needed."
-      );
-
-      if (!replace) return;
-
-      const importedSource = await file.text();
-      editor.value = importedSource;
-      saveDocument();
-      updatePreview();
-    } catch {
-      status.textContent = "The file could not be imported. Please try again.";
-    } finally {
-      fileInput.value = "";
-    }
-  });
-
-  updatePreview();
+if (!savingWorks) {
+  message("Browser saving is unavailable. Download your source to keep it.", "error");
+}
 </script>
 </body>
 </html>
