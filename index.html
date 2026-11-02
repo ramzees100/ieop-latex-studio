@@ -273,6 +273,7 @@
       padding: 12px;
     }
   }
+.files-heading{margin-top:25px!important;border-top:1px solid #cad5e2;padding-top:18px}#fileList{display:flex;flex-direction:column;gap:5px;max-height:400px;overflow:auto}.file-item{text-align:left;font-size:12px;padding:8px;overflow-wrap:anywhere}.file-item.selected{background:#dceee5;border-color:#176b52}#assetView{padding:25px;min-height:420px}#assetImage{max-width:100%;max-height:55vh;object-fit:contain}.projects-sidebar{max-height:1100px;overflow:auto}
 </style>
 </head>
 
@@ -290,7 +291,9 @@
     value="My first document"
   >
 
-  <button id="importButton">Import .tex</button>
+  <button id="importButton">Upload files</button>
+  <button id="folderButton">Upload folder</button>
+  <button id="zipButton">Download project ZIP</button>
   <button id="sourceButton">Download .tex</button>
 
   <button id="compileButton" class="primary">
@@ -329,22 +332,14 @@
   </span>
 </div>
 
-<div class="notice">
-  Clicking <strong>Compile</strong> sends the active project's
-  LaTeX source to your Render compiler.
-  Each project currently supports one self-contained .tex file
-  using pdfLaTeX. Additional image files, bibliography files,
-  and custom class uploads are not supported yet.
-  An idle server may take about a minute to wake up.
-</div>
-
+<div class="notice">Compile sends all files in the active project to your Render compiler. Use <strong>main.tex</strong> as the entry document. Supports chapters, PNG/JPEG/PDF figures, and BibTeX. Projects save on this device; download backups regularly. Compilation is limited to 45 seconds of server processing. Public user accounts are not connected.</div>
 <div class="studio-layout">
 
   <aside class="projects-sidebar" aria-label="Projects">
     <h2>My projects</h2>
 
     <div class="project-tools">
-      <button id="newProject">+ New project</button>
+      <button id="newProject">+ New project</button><button id="newBook">+ Book project</button>
       <button id="renameProject">Rename</button>
       <button id="deleteProject">Delete</button>
       <button id="restoreProject">Restore last deleted</button>
@@ -354,16 +349,16 @@
 
     <nav id="projectList" aria-label="Choose a project"></nav>
 
-    <p class="hint">
-      Projects save separately in this browser.
-      Back them up to keep a copy.
-      Compile after opening a project to generate its PDF.
-    </p>
+    <h2 class="files-heading">Project files</h2>
+    <div class="project-tools"><button id="newFile">+ Text file</button><button id="renameFile">Rename file</button><button id="deleteFile">Delete file</button><button id="restoreFile">Restore file</button></div>
+    <nav id="fileList" aria-label="Choose a file"></nav>
+    <p class="hint">New files can use paths such as chapters/chapter1.tex or images/figure.png. main.tex always stays at the project root.</p>
   </aside>
 
   <main>
     <section class="panel" aria-label="Source editor">
-      <h2 class="panel-title">main.tex — LaTeX source</h2>
+      <h2 id="fileTitle" class="panel-title">main.tex</h2>
+<div id="assetView" hidden><p id="assetInfo"></p><img id="assetImage" alt="Selected project image" hidden><button id="downloadAsset">Download selected file</button></div>
 
       <textarea
         id="editor"
@@ -408,7 +403,7 @@
 <input
   id="fileInput"
   type="file"
-  accept=".tex,text/plain"
+  accept=".tex,.bib,.bst,.sty,.cls,.png,.jpg,.jpeg,.pdf" multiple
   hidden
 >
 
@@ -419,812 +414,232 @@
   hidden
 >
 
+<input id="folderInput" type="file" webkitdirectory multiple hidden>
 <script>
 "use strict";
-
-const COMPILER = "https://ieop-latex-compiler.onrender.com";
-const STORAGE_KEY = "ieop-latex-studio-projects-v1";
-const LEGACY_KEY = "ieop-latex-studio-v1";
-
-const $ = id => document.getElementById(id);
-
-const editor = $("editor");
-const projectName = $("projectName");
-
-let state;
-let compiling = false;
-let importing = false;
-let savingWorks = true;
-let storageBlocked = false;
-let pdfUrl = null;
-let compiledSource = null;
-
-const starter = String.raw`\documentclass[12pt]{article}
-\usepackage{amsmath}
+const $=id=>document.getElementById(id);
+const API="https://ieop-latex-compiler.onrender.com";
+const MB=1024*1024, MAX_FILE=10*MB, MAX_TOTAL=25*MB, MAX_COUNT=200;
+const textExt=new Set(["tex","bib","bst","sty","cls"]);
+const extensions=new Set([...textExt,"png","jpg","jpeg","pdf"]);
+const enc=new TextEncoder();
+const article=String.raw`\documentclass[12pt]{article}
+\usepackage{amsmath,graphicx}
 \usepackage[margin=1in]{geometry}
-
-\title{My First IEOP Document}
+\title{My IEOP Document}
 \author{Your Name}
-\date{\today}
-
 \begin{document}
 \maketitle
-
 \section{Introduction}
 Welcome to IEOP LaTeX Studio.
-
-\section{An Example Equation}
-The wavelength and frequency of light are related by
-\begin{equation}
-c = \lambda f
-\end{equation}
-
-\section{Conclusion}
-Write your conclusion here.
-
+\[ c=\lambda f \]
 \end{document}`;
-
-function makeId() {
-  return crypto.randomUUID();
+const bookMain=String.raw`\documentclass[12pt,oneside]{book}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,graphicx}
+\usepackage[margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+\title{My Book}
+\author{Your Name}
+\date{\today}
+\begin{document}
+\frontmatter
+\maketitle
+\tableofcontents
+\mainmatter
+\include{chapters/chapter1}
+\include{chapters/chapter2}
+\backmatter
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}`;
+const chapter1=String.raw`\chapter{Introduction}
+This is the first chapter. A sample reference is \cite{maxwell1865}.
+\section{An equation}
+\begin{equation}
+c=\lambda f
+\end{equation}
+% Upload an image first, then uncomment this example:
+% \begin{figure}[htbp]
+% \centering
+% \includegraphics[width=0.7\textwidth]{images/figure.png}
+% \caption{Describe your figure.}
+% \label{fig:example}
+% \end{figure}`;
+const refs=String.raw`@article{maxwell1865,
+  author = {James Clerk Maxwell},
+  title = {A Dynamical Theory of the Electromagnetic Field},
+  journal = {Philosophical Transactions of the Royal Society of London},
+  year = {1865},
+  volume = {155},
+  pages = {459--512}
+}`;
+let state,db,activePath="main.tex",busy=false,blocked=false,storageOK=true;
+let pdfURL=null,assetURL=null,compiledSignature=null,saveTimer,revision=0,saveQueue=Promise.resolve();
+const sessionId=crypto.randomUUID();
+const channel=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("ieop-books-state"):null;
+const uid=()=>crypto.randomUUID();
+const textFile=(path,text)=>({path,kind:"text",text});
+function newProject(name,source=article){return{id:uid(),name,files:[textFile("main.tex",source)],deletedFiles:[]};}
+function current(){return state.projects.find(p=>p.id===state.activeId);}
+function selected(){return current().files.find(f=>f.path===activePath);}
+function msg(text,error=false){$("status").textContent=text;$("status").className=error?"error":"";}
+function ext(path){return path.split(".").pop().toLowerCase();}
+function validPath(path){
+ if(typeof path!=="string"||!path||path.length>240||/[\\:\x00-\x1f]/.test(path)||path.startsWith("/"))throw Error("Invalid file path.");
+ if(path.split("/").some(x=>!x||x===".."||x.startsWith(".")||x==="__MACOSX"))throw Error("Hidden files and unsafe paths are not allowed.");
+ if(!extensions.has(ext(path)))throw Error("Unsupported file type: "+path);
+ if(path.toLowerCase()==="main.pdf")throw Error("main.pdf is reserved. Put PDF figures in an images folder.");
+ return path;
 }
-
-function message(text, kind = "") {
-  $("status").textContent = text;
-  $("status").className = kind;
+function bytes(f){
+ if(f.kind==="text")return enc.encode(f.text);
+ const binary=atob(f.base64),out=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)out[i]=binary.charCodeAt(i);return out;
 }
-
-function newProjectData(name, source = starter) {
-  return {
-    id: makeId(),
-    name,
-    source
-  };
+function validateProject(p){
+ if(!p||typeof p.id!=="string"||typeof p.name!=="string"||!Array.isArray(p.files)||!p.files.length)throw Error("Invalid project.");
+ if(!Array.isArray(p.deletedFiles))p.deletedFiles=[];
+ const names=new Set();let total=0;
+ for(const f of p.files){validPath(f.path);const name=f.path.toLowerCase();if(names.has(name))throw Error("Duplicate file: "+f.path);names.add(name);
+ if(f.kind==="text"?typeof f.text!=="string"||!textExt.has(ext(f.path)):f.kind!=="binary"||typeof f.base64!=="string"||textExt.has(ext(f.path)))throw Error("Invalid file content.");
+ const size=bytes(f).length;if(size>MAX_FILE)throw Error("A file exceeds 10 MB.");total+=size;
+ }
+ if(p.files.length>MAX_COUNT||total>MAX_TOTAL)throw Error("Project exceeds 200 files or 25 MB.");
+ if(!p.files.some(f=>f.path==="main.tex"&&f.kind==="text"))throw Error("Each project needs a text file named main.tex at the root.");
+ for(const f of p.files){if(p.files.some(g=>g!==f&&g.path.toLowerCase().startsWith(f.path.toLowerCase()+"/")))throw Error("A file path is also used as a folder.");}
+ for(const f of p.deletedFiles){validPath(f.path);if(f.kind==="text"?typeof f.text!=="string":f.kind!=="binary"||typeof f.base64!=="string")throw Error("Invalid deleted file.");if(bytes(f).length>MAX_FILE)throw Error("Deleted file exceeds 10 MB.");}
+ return p;
 }
-
-function freshState(name, source) {
-  const project = newProjectData(name, source);
-
-  return {
-    activeId: project.id,
-    projects: [project],
-    trash: []
-  };
+function normalize(raw){
+ if(!raw||!Array.isArray(raw.projects)||!raw.projects.length||!Array.isArray(raw.trash))throw Error("Invalid backup.");
+ const s=structuredClone(raw),ids=new Set();
+ for(const p of [...s.projects,...s.trash]){
+ if(!p.files&&typeof p.source==="string"){p.files=[textFile("main.tex",p.source)];p.deletedFiles=[];delete p.source;}
+ validateProject(p);if(ids.has(p.id))throw Error("Duplicate project ID.");ids.add(p.id);
+ }
+ if(!s.projects.some(p=>p.id===s.activeId))s.activeId=s.projects[0].id;s.version=2;return s;
 }
-
-function validProject(project) {
-  return (
-    project &&
-    typeof project.id === "string" &&
-    typeof project.name === "string" &&
-    typeof project.source === "string"
-  );
+function requestPromise(request){return new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
+async function openDB(){return await new Promise((resolve,reject)=>{const r=indexedDB.open("ieop-latex-books",1);r.onupgradeneeded=()=>r.result.createObjectStore("workspace");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.onblocked=()=>reject(Error("Close other editor tabs and reload."));});}
+async function readDB(){return requestPromise(db.transaction("workspace","readonly").objectStore("workspace").get("state"));}
+function capture(){if(!state)return;current().name=$("projectName").value;const f=selected();if(f?.kind==="text")f.text=$("editor").value;}
+function persist(){
+ clearTimeout(saveTimer);saveTimer=null;if(!state)return Promise.resolve(false);capture();const snapshot=structuredClone(state);
+ saveQueue=saveQueue.then(()=>new Promise(resolve=>{
+ if(!db||blocked){storageOK=false;resolve(false);return;}
+ const tx=db.transaction("workspace","readwrite"),store=tx.objectStore("workspace");let conflict=false;
+ const r=store.get("state");r.onsuccess=()=>{const stored=r.result;if((stored?.revision||0)!==revision){conflict=true;tx.abort();return;}store.put({revision:revision+1,state:snapshot},"state");};
+ tx.oncomplete=()=>{revision++;storageOK=true;channel?.postMessage({sessionId});resolve(true);};
+ tx.onabort=tx.onerror=()=>{if(conflict)blocked=true;storageOK=false;msg(conflict?"Another tab changed your projects. Download a backup, then reload. Saving is paused.":"Browser saving failed. Download a backup before leaving.",true);resolve(false);};
+ }));return saveQueue;
 }
-
-function validateState(candidate) {
-  if (
-    !candidate ||
-    !Array.isArray(candidate.projects) ||
-    candidate.projects.length === 0 ||
-    !candidate.projects.every(validProject) ||
-    !Array.isArray(candidate.trash) ||
-    !candidate.trash.every(validProject)
-  ) {
-    throw new Error("Invalid project data.");
-  }
-
-  const ids = [
-    ...candidate.projects,
-    ...candidate.trash
-  ].map(project => project.id);
-
-  if (new Set(ids).size !== ids.length) {
-    throw new Error("Duplicate project identifiers.");
-  }
-
-  if (
-    !candidate.projects.some(
-      project => project.id === candidate.activeId
-    )
-  ) {
-    candidate.activeId = candidate.projects[0].id;
-  }
-
-  return candidate;
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{const ok=await persist();if(ok&&!busy)msg("Saved on this device.");},400);}
+function signature(){return JSON.stringify(current().files);}
+function pdfState(){const fresh=pdfURL&&compiledSignature===signature();$("pdfButton").disabled=!fresh||busy;$("openPdf").hidden=!fresh;$("previewTitle").textContent=pdfURL&&!fresh?"PDF preview — changes need compilation":"PDF preview";}
+function clearPDF(){if(pdfURL)URL.revokeObjectURL(pdfURL);pdfURL=null;compiledSignature=null;$("pdfViewer").removeAttribute("src");$("pdfViewer").hidden=true;$("emptyPreview").hidden=false;$("openPdf").removeAttribute("href");pdfState();}
+function renderList(id,items,selectedId,action,key){$(id).replaceChildren();for(const item of items){const b=document.createElement("button");b.textContent=key==="path"?item.path:(item.name.trim()||"Untitled project");b.className=(key==="path"?"file-item":"project-item")+(item[key]===selectedId?" selected":"");b.disabled=busy;if(item[key]===selectedId)b.setAttribute("aria-current","page");b.onclick=()=>action(item[key]);$(id).appendChild(b);}}
+function controls(){
+ for(const id of ["newProject","newBook","renameProject","deleteProject","importProjects","importButton","folderButton","newFile","renameFile","deleteFile","zipButton","compileButton"] )$(id).disabled=busy;
+ $("projectName").disabled=busy;$("editor").readOnly=busy;
+ $("restoreProject").disabled=busy||!state.trash.length;$("restoreFile").disabled=busy||!current().deletedFiles.length;
+ $("renameFile").disabled=busy||activePath==="main.tex";$("deleteFile").disabled=busy||activePath==="main.tex";
+ renderList("projectList",state.projects,state.activeId,switchProject,"id");renderList("fileList",current().files,activePath,switchFile,"path");pdfState();
 }
-
-try {
-  const saved = localStorage.getItem(STORAGE_KEY);
-
-  if (saved !== null) {
-    state = validateState(JSON.parse(saved));
-  } else {
-    const legacy = JSON.parse(
-      localStorage.getItem(LEGACY_KEY) || "null"
-    );
-
-    state = freshState(
-      typeof legacy?.name === "string"
-        ? legacy.name
-        : "My first document",
-
-      typeof legacy?.source === "string"
-        ? legacy.source
-        : starter
-    );
-  }
-} catch {
-  storageBlocked = true;
-  savingWorks = false;
-  state = freshState("Recovery workspace", starter);
+function showFile(){
+ const f=selected();$("fileTitle").textContent=f.path;$("editor").hidden=f.kind!=="text";$("assetView").hidden=f.kind==="text";
+ if(assetURL)URL.revokeObjectURL(assetURL);assetURL=null;$("assetImage").hidden=true;$("assetImage").removeAttribute("src");
+ if(f.kind==="text")$("editor").value=f.text;
+ else {$("assetInfo").textContent=f.path+" · "+(bytes(f).length/1024).toFixed(1)+" KB";if(["png","jpg","jpeg"].includes(ext(f.path))){assetURL=URL.createObjectURL(new Blob([bytes(f)]));$("assetImage").src=assetURL;$("assetImage").hidden=false;}}
+ controls();
 }
-
-function activeProject() {
-  return state.projects.find(
-    project => project.id === state.activeId
-  );
+async function switchProject(id){if(busy||id===state.activeId)return;capture();state.activeId=id;activePath="main.tex";$("projectName").value=current().name;clearPDF();showFile();await persist();msg(storageOK?"Project opened. Compile to generate its PDF.":"Project opened in memory. Back up your projects.",!storageOK);}
+async function switchFile(path){if(busy)return;capture();activePath=path;showFile();await persist();}
+async function mutate(action,notice){if(busy)return;capture();try{action();clearPDF();$("projectName").value=current().name;if(!selected())activePath="main.tex";showFile();const ok=await persist();msg(ok?notice:"Changes are in memory only. Back up your projects.",!ok);}catch(e){msg(e.message,true);}}
+function filename(){return current().name.replace(/[^a-zA-Z0-9 _-]/g,"").trim()||"project";}
+function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);}
+// ZIP writer using uncompressed entries: no external scripts are required.
+function crc32(data){let crc=0xffffffff;for(const byte of data){crc^=byte;for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}return(crc^0xffffffff)>>>0;}
+function makeZIP(files){
+ const chunks=[],central=[];let offset=0,centralSize=0;
+ for(const f of files){const name=enc.encode(f.path),data=bytes(f),crc=crc32(data),head=new Uint8Array(30),h=new DataView(head.buffer);
+ h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x800,true);h.setUint16(12,33,true);h.setUint32(14,crc,true);h.setUint32(18,data.length,true);h.setUint32(22,data.length,true);h.setUint16(26,name.length,true);
+ chunks.push(head,name,data);
+ const cd=new Uint8Array(46),d=new DataView(cd.buffer);d.setUint32(0,0x02014b50,true);d.setUint16(4,20,true);d.setUint16(6,20,true);d.setUint16(8,0x800,true);d.setUint16(14,33,true);d.setUint32(16,crc,true);d.setUint32(20,data.length,true);d.setUint32(24,data.length,true);d.setUint16(28,name.length,true);d.setUint32(42,offset,true);central.push(cd,name);centralSize+=46+name.length;offset+=30+name.length+data.length;
+ }
+ const end=new Uint8Array(22),e=new DataView(end.buffer);e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,centralSize,true);e.setUint32(16,offset,true);
+ return new Blob([...chunks,...central,end],{type:"application/zip"});
 }
-
-function captureCurrent() {
-  const project = activeProject();
-  project.name = projectName.value;
-  project.source = editor.value;
+async function compile(){
+ if(busy)return;capture();const token=$("token").value.trim();if(!token){msg("Enter your compiler token first.",true);$("token").focus();return;}
+ let zip;try{validateProject(current());if(!current().files.find(f=>f.path==="main.tex").text.trim())throw Error("main.tex is empty.");zip=makeZIP(current().files);if(zip.size>14*MB)throw Error("Project ZIP exceeds 14 MB. Reduce image sizes before compiling.");}catch(e){msg(e.message,true);return;}
+ const snapshot=signature();busy=true;controls();$("compileButton").textContent="Compiling…";await persist();
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),150000);
+ try{
+ msg("Connecting to the compiler. An idle server may need a minute to wake up.");
+ const health=await fetch(API+"/",{signal:controller.signal,credentials:"omit",cache:"no-store",redirect:"error"});if(!health.ok)throw Error("Compiler is not ready.");
+ const capabilities=await health.json();if(!capabilities.supports?.includes("zip-project"))throw Error("Render is still running the old compiler. Deploy the updated app.py first.");
+ const form=new FormData();form.append("project",zip,"project.zip");msg("Compiling all project files…");
+ const r=await fetch(API+"/compile",{method:"POST",headers:{Authorization:"Bearer "+token},body:form,signal:controller.signal,credentials:"omit",redirect:"error"});
+ if(!r.ok){let detail={};try{detail=await r.json();}catch{}throw Error(r.status===401?"Access denied. Check your token.":detail.error||"Compiler returned HTTP "+r.status);}
+ if(!(r.headers.get("Content-Type")||"").includes("application/pdf"))throw Error("The server did not return a PDF.");
+ const blob=await r.blob();if(!blob.size)throw Error("The PDF is empty.");clearPDF();pdfURL=URL.createObjectURL(blob);compiledSignature=snapshot;$("pdfViewer").src=pdfURL;$("pdfViewer").hidden=false;$("emptyPreview").hidden=true;$("openPdf").href=pdfURL;msg(storageOK?"PDF compiled. Download PDF or Open PDF to view it.":"PDF compiled. Browser saving failed; download a backup.",!storageOK);
+ }catch(e){msg(e.name==="AbortError"?"Request timed out. Check Render, then try again.":e.message||"Could not reach the compiler.",true);}
+ finally{clearTimeout(timer);busy=false;$("compileButton").textContent="Compile";controls();}
 }
-
-function persist() {
-  if (storageBlocked) {
-    savingWorks = false;
-    return false;
-  }
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    savingWorks = true;
-    return true;
-  } catch {
-    savingWorks = false;
-    return false;
-  }
+function base64(data){let result="";for(let i=0;i<data.length;i+=32768)result+=String.fromCharCode(...data.subarray(i,i+32768));return btoa(result);}
+async function upload(fileList,isFolder){
+ if(busy)return;capture();busy=true;controls();
+ try{
+ const incoming=Array.from(fileList);if(incoming.length>MAX_COUNT)throw Error("Select no more than 200 files.");const additions=[],seen=new Set();
+ for(const file of incoming){let path=isFolder?file.webkitRelativePath.split("/").slice(1).join("/"):file.name;
+ if(!isFolder&&["png","jpg","jpeg","pdf"].includes(ext(path)))path="images/"+path;
+ validPath(path);if(seen.has(path.toLowerCase()))throw Error("Duplicate upload path: "+path);seen.add(path.toLowerCase());
+ if(file.size>MAX_FILE)throw Error("File exceeds 10 MB: "+path);
+ const data=new Uint8Array(await file.arrayBuffer());additions.push(textExt.has(ext(path))?textFile(path,new TextDecoder("utf-8",{fatal:true}).decode(data)):{path,kind:"binary",base64:base64(data)});
+ }
+ const p=current(),next=structuredClone(p),collisions=additions.filter(f=>p.files.some(g=>g.path.toLowerCase()===f.path.toLowerCase()));
+ if(collisions.length&&!confirm("Replace "+collisions.length+" existing file(s)? Previous versions can be restored with Restore file."))return;
+ for(const f of additions){const old=next.files.find(g=>g.path.toLowerCase()===f.path.toLowerCase());if(old){next.deletedFiles.push(old);next.files=next.files.filter(g=>g!==old);}next.files.push(f);}
+ validateProject(next);p.files=next.files;p.deletedFiles=next.deletedFiles;if(!selected())activePath="main.tex";clearPDF();showFile();const ok=await persist();msg(ok?"Files uploaded. Compile main.tex to include referenced files.":"Files loaded in memory only. Download a project ZIP or backup now.",!ok);
+ }catch(e){msg("Upload failed: "+e.message,true);}finally{busy=false;controls();}
 }
-
-function renderProjects() {
-  $("projectList").replaceChildren();
-
-  for (const project of state.projects) {
-    const button = document.createElement("button");
-
-    button.type = "button";
-    button.className = "project-item";
-    button.textContent =
-      project.name.trim() || "Untitled project";
-
-    if (project.id === state.activeId) {
-      button.classList.add("selected");
-      button.setAttribute("aria-current", "page");
-    }
-
-    button.disabled = compiling || importing;
-
-    button.addEventListener("click", () => {
-      switchProject(project.id);
-    });
-
-    $("projectList").appendChild(button);
-  }
-
-  const busy = compiling || importing;
-
-  for (const id of [
-    "newProject",
-    "renameProject",
-    "deleteProject",
-    "importProjects",
-    "importButton"
-  ]) {
-    $(id).disabled = busy;
-  }
-
-  $("restoreProject").disabled =
-    busy || state.trash.length === 0;
-
-  $("compileButton").disabled = busy;
+$("editor").oninput=()=>{capture();scheduleSave();pdfState();msg(storageOK&&!blocked?"Changes pending save…":"Saving unavailable. Back up before leaving.",!storageOK||blocked);};
+$("projectName").oninput=()=>{capture();scheduleSave();};
+$("editor").onkeydown=e=>{if(busy)return;if(e.key==="Tab"){e.preventDefault();$("editor").setRangeText("  ",$("editor").selectionStart,$("editor").selectionEnd,"end");$("editor").oninput();}if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();compile();}};
+$("compileButton").onclick=compile;
+$("clearToken").onclick=()=>{$("token").value="";msg("Token cleared. A request already sent will continue.");};
+$("sourceButton").textContent="Download selected file";
+$("sourceButton").onclick=$("downloadAsset").onclick=()=>{capture();const f=selected();download(new Blob([bytes(f)]),f.path.split("/").pop());};
+$("pdfButton").onclick=()=>{if(pdfURL&&compiledSignature===signature()){const a=document.createElement("a");a.href=pdfURL;a.download=filename()+".pdf";a.click();}};
+$("zipButton").onclick=()=>{capture();try{validateProject(current());download(makeZIP(current().files),filename()+".zip");}catch(e){msg(e.message,true);}};
+function addProject(book){if(busy)return;const name=prompt("Project name:",book?"My Book":"Untitled project");if(!name?.trim())return;mutate(()=>{const p=newProject(name.trim(),book?bookMain:article);if(book)p.files.push(textFile("chapters/chapter1.tex",chapter1),textFile("chapters/chapter2.tex",String.raw`\chapter{Next Steps}
+Write your second chapter here.`),textFile("references.bib",refs));state.projects.push(p);state.activeId=p.id;activePath="main.tex";},book?"Book created with two chapters and references.":"Project created.");}
+$("newProject").onclick=()=>addProject(false);$("newBook").onclick=()=>addProject(true);
+$("renameProject").onclick=()=>{const name=prompt("Project name:",current().name);if(name?.trim())mutate(()=>current().name=name.trim(),"Project renamed.");};
+$("deleteProject").onclick=()=>{if(confirm("Move this project to deleted projects?"))mutate(()=>{const old=current();state.trash.push(old);state.projects=state.projects.filter(p=>p.id!==old.id);if(!state.projects.length)state.projects.push(newProject("Untitled project"));state.activeId=state.projects[0].id;activePath="main.tex";},"Project moved to deleted projects.");};
+$("restoreProject").onclick=()=>mutate(()=>{if(!state.trash.length)return;const p=state.trash.pop();state.projects.push(p);state.activeId=p.id;activePath="main.tex";},"Project restored.");
+$("newFile").onclick=()=>{const path=prompt("Text file path (for example chapters/chapter3.tex):","chapters/chapter3.tex");if(!path)return;mutate(()=>{validPath(path);if(!textExt.has(ext(path)))throw Error("Create a text file here; use Upload files for images.");const p=structuredClone(current());p.files.push(textFile(path,""));validateProject(p);current().files=p.files;activePath=path;},"File created. Reference it from main.tex to include it in compilation.");};
+$("renameFile").onclick=()=>{if(activePath==="main.tex")return;const path=prompt("New file path:",activePath);if(!path)return;mutate(()=>{validPath(path);if(ext(path)!==ext(activePath))throw Error("Keep the same file extension.");const p=structuredClone(current());p.files.find(f=>f.path===activePath).path=path;validateProject(p);current().files=p.files;activePath=path;},"File renamed. Update any LaTeX references to its old path.");};
+$("deleteFile").onclick=()=>{if(activePath==="main.tex"||!confirm("Delete "+activePath+"? You can restore it."))return;mutate(()=>{const p=current();p.deletedFiles.push(selected());p.files=p.files.filter(f=>f.path!==activePath);activePath="main.tex";},"File deleted. Update references or restore it before compiling.");};
+$("restoreFile").onclick=()=>mutate(()=>{const p=current(),f=p.deletedFiles.at(-1);if(!f)return;const next=structuredClone(p);if(next.files.some(g=>g.path.toLowerCase()===f.path.toLowerCase()))throw Error("Rename the existing file at "+f.path+" before restoring this version.");next.files.push(f);next.deletedFiles.pop();validateProject(next);p.files=next.files;p.deletedFiles=next.deletedFiles;activePath=f.path;},"File restored.");
+$("importButton").onclick=()=>$("fileInput").click();$("folderButton").onclick=()=>$("folderInput").click();
+$("fileInput").onchange=async e=>{await upload(e.target.files,false);e.target.value="";};$("folderInput").onchange=async e=>{await upload(e.target.files,true);e.target.value="";};
+$("backupProjects").onclick=()=>{capture();download(new Blob([JSON.stringify(state)],{type:"application/json"}),"ieop-projects-backup.json");};
+$("importProjects").onclick=()=>$("backupInput").click();
+$("backupInput").onchange=async e=>{if(busy)return;const file=e.target.files[0];if(!file)return;busy=true;capture();controls();try{if(file.size>100*MB)throw Error("Backup exceeds 100 MB.");const data=normalize(JSON.parse(await file.text()));for(const p of data.projects){p.id=uid();p.name+=" (imported)";state.projects.push(p);}for(const p of data.trash){p.id=uid();state.trash.push(p);}const ok=await persist();msg(ok?"Backup imported; existing projects kept.":"Backup imported in memory only. Saving unavailable.",!ok);}catch(err){msg(err.message,true);}finally{busy=false;e.target.value="";controls();}};
+channel&&(channel.onmessage=e=>{if(e.data.sessionId!==sessionId){blocked=true;storageOK=false;msg("Projects changed in another tab. Back up this tab, then reload. Saving is paused.",true);}});
+window.addEventListener("beforeunload",e=>{if(saveTimer||!storageOK){e.preventDefault();e.returnValue="";}});
+window.addEventListener("pagehide",()=>{$("token").value="";});
+async function init(){
+ // Disable controls until stored projects have loaded.
+ document.querySelectorAll("button,input,textarea").forEach(x=>x.disabled=true);
+ try{db=await openDB();const record=await readDB();revision=record?.revision||0;if(record)state=normalize(record.state);else{const v1=localStorage.getItem("ieop-latex-studio-projects-v1");if(v1!==null)state=normalize(JSON.parse(v1));else{const old=JSON.parse(localStorage.getItem("ieop-latex-studio-v1")||"null");const p=newProject(old?.name||"My first document",typeof old?.source==="string"?old.source:article);state={version:2,projects:[p],trash:[],activeId:p.id};}}}
+ catch(e){blocked=true;storageOK=false;const p=newProject("Recovery workspace");state={version:2,projects:[p],trash:[],activeId:p.id};msg("Storage could not be opened. Existing data was not overwritten. You can import a backup and work in memory.",true);}
+ $("projectName").value=current().name;document.querySelectorAll("button,input,textarea").forEach(x=>x.disabled=false);showFile();
+ if(!blocked){const ok=await persist();msg(ok?"Projects ready. Use + Book project to start a book.":"Saving unavailable. Back up before leaving.",!ok);}
 }
-
-function saveDocument() {
-  captureCurrent();
-  const success = persist();
-  renderProjects();
-  return success;
-}
-
-function updatePdfState() {
-  const current =
-    pdfUrl !== null && editor.value === compiledSource;
-
-  $("pdfButton").disabled = !current || compiling;
-  $("openPdf").hidden = !current;
-
-  $("previewTitle").textContent =
-    pdfUrl && !current
-      ? "PDF preview — previous compilation; compile your changes"
-      : "PDF preview";
-}
-
-function clearPdf() {
-  $("pdfViewer").removeAttribute("src");
-  $("pdfViewer").hidden = true;
-  $("emptyPreview").hidden = false;
-  $("openPdf").removeAttribute("href");
-
-  if (pdfUrl) {
-    URL.revokeObjectURL(pdfUrl);
-  }
-
-  pdfUrl = null;
-  compiledSource = null;
-  updatePdfState();
-}
-
-function loadActiveProject() {
-  const project = activeProject();
-
-  editor.value = project.source;
-  projectName.value = project.name;
-
-  clearPdf();
-  renderProjects();
-}
-
-function reportSave(successMessage) {
-  if (savingWorks) {
-    message(successMessage);
-  } else {
-    message(
-      "Changes are kept in memory only. Browser saving is unavailable. Back up your projects before leaving.",
-      "error"
-    );
-  }
-}
-
-function switchProject(id) {
-  if (
-    compiling ||
-    importing ||
-    id === state.activeId
-  ) {
-    return;
-  }
-
-  captureCurrent();
-  state.activeId = id;
-  persist();
-  loadActiveProject();
-
-  reportSave(
-    "Project opened. Click Compile to generate its PDF."
-  );
-}
-
-function structuralChange(action, successMessage) {
-  if (compiling || importing) return;
-
-  captureCurrent();
-  action();
-  persist();
-  loadActiveProject();
-  reportSave(successMessage);
-}
-
-function sourceChanged() {
-  saveDocument();
-  updatePdfState();
-
-  if (!compiling) {
-    reportSave(
-      "Saved in this browser. Click Compile to update the PDF."
-    );
-  }
-}
-
-function safeName() {
-  return (
-    projectName.value
-      .replace(/[^a-zA-Z0-9 _-]/g, "")
-      .trim() || "document"
-  );
-}
-
-function download(url, filename) {
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = filename;
-
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-}
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  download(url, filename);
-
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 1000);
-}
-
-async function compileDocument() {
-  if (compiling || importing) return;
-
-  const token = $("token").value.trim();
-  const source = editor.value;
-
-  if (!token) {
-    message(
-      "Enter your compiler access token first.",
-      "error"
-    );
-    $("token").focus();
-    return;
-  }
-
-  if (!source.trim()) {
-    message("Enter a LaTeX document first.", "error");
-    return;
-  }
-
-  if (new TextEncoder().encode(source).length > 150000) {
-    message(
-      "Source exceeds the compiler's 150 KB limit.",
-      "error"
-    );
-    return;
-  }
-
-  compiling = true;
-  $("compileButton").textContent = "Compiling…";
-
-  saveDocument();
-  updatePdfState();
-
-  const controller = new AbortController();
-
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, 150000);
-
-  try {
-    message(
-      "Connecting to the compiler. An idle server may need a minute to wake up."
-    );
-
-    const health = await fetch(COMPILER + "/", {
-      signal: controller.signal,
-      credentials: "omit",
-      cache: "no-store",
-      redirect: "error"
-    });
-
-    if (!health.ok) {
-      throw new Error(
-        "The compiler is not ready. Please try again shortly."
-      );
-    }
-
-    message("Compiling your LaTeX document…");
-
-    const response = await fetch(COMPILER + "/compile", {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
-
-      body: JSON.stringify({ source }),
-      signal: controller.signal,
-      credentials: "omit",
-      cache: "no-store",
-      redirect: "error"
-    });
-
-    if (!response.ok) {
-      let detail = {};
-
-      try {
-        detail = await response.json();
-      } catch {}
-
-      if (response.status === 401) {
-        throw new Error(
-          "Access denied. Check your compiler token."
-        );
-      }
-
-      throw new Error(
-        detail.error ||
-        "Compilation failed (HTTP " +
-          response.status + ")."
-      );
-    }
-
-    const contentType =
-      response.headers.get("Content-Type") || "";
-
-    if (
-      !contentType.toLowerCase().includes("application/pdf")
-    ) {
-      throw new Error("The server did not return a PDF.");
-    }
-
-    const blob = await response.blob();
-
-    if (!blob.size) {
-      throw new Error("The server returned an empty PDF.");
-    }
-
-    const previousUrl = pdfUrl;
-
-    pdfUrl = URL.createObjectURL(blob);
-    compiledSource = source;
-
-    $("pdfViewer").src = pdfUrl;
-    $("pdfViewer").hidden = false;
-    $("emptyPreview").hidden = true;
-    $("openPdf").href = pdfUrl;
-
-    if (previousUrl) {
-      setTimeout(() => {
-        URL.revokeObjectURL(previousUrl);
-      }, 1000);
-    }
-
-    message(
-      editor.value === source
-        ? "PDF compiled successfully. You can preview or download it."
-        : "PDF compiled, but the source changed during compilation. Compile again to include your latest edits.",
-      "success"
-    );
-
-    if (!savingWorks) {
-      $("status").textContent +=
-        " Browser saving is unavailable; download a backup.";
-    }
-  } catch (error) {
-    if (error.name === "AbortError") {
-      message(
-        "The request timed out. The server may still be waking up. Try Compile again.",
-        "error"
-      );
-    } else if (error instanceof TypeError) {
-      message(
-        "Could not reach the compiler. Check your connection and Render service status, then try again.",
-        "error"
-      );
-    } else {
-      message(
-        error.message || "Compilation failed.",
-        "error"
-      );
-    }
-  } finally {
-    clearTimeout(timeout);
-    compiling = false;
-
-    $("compileButton").textContent = "Compile";
-
-    renderProjects();
-    updatePdfState();
-  }
-}
-
-editor.addEventListener("input", sourceChanged);
-
-projectName.addEventListener("input", () => {
-  if (!saveDocument()) {
-    message(
-      "Browser saving failed. Back up your projects.",
-      "error"
-    );
-  }
-});
-
-editor.addEventListener("keydown", event => {
-  if (event.key === "Tab") {
-    event.preventDefault();
-
-    editor.setRangeText(
-      "  ",
-      editor.selectionStart,
-      editor.selectionEnd,
-      "end"
-    );
-
-    sourceChanged();
-  }
-
-  if (
-    (event.ctrlKey || event.metaKey) &&
-    event.key === "Enter"
-  ) {
-    event.preventDefault();
-    compileDocument();
-  }
-});
-
-$("compileButton").addEventListener(
-  "click",
-  compileDocument
-);
-
-$("clearToken").addEventListener("click", () => {
-  $("token").value = "";
-
-  message(
-    compiling
-      ? "Token cleared from the input. The current compilation is already in progress."
-      : "Token cleared."
-  );
-});
-
-$("sourceButton").addEventListener("click", () => {
-  downloadBlob(
-    new Blob([editor.value], {
-      type: "text/plain;charset=utf-8"
-    }),
-    safeName() + ".tex"
-  );
-});
-
-$("pdfButton").addEventListener("click", () => {
-  if (
-    pdfUrl &&
-    editor.value === compiledSource
-  ) {
-    download(pdfUrl, safeName() + ".pdf");
-  }
-});
-
-$("newProject").addEventListener("click", () => {
-  if (compiling || importing) return;
-
-  const name = prompt(
-    "New project name:",
-    "Untitled project"
-  );
-
-  if (name === null || !name.trim()) return;
-
-  structuralChange(() => {
-    const project = newProjectData(name.trim());
-
-    state.projects.push(project);
-    state.activeId = project.id;
-  }, "New project created.");
-});
-
-$("renameProject").addEventListener("click", () => {
-  if (compiling || importing) return;
-
-  const name = prompt(
-    "Project name:",
-    projectName.value
-  );
-
-  if (name === null || !name.trim()) return;
-
-  structuralChange(() => {
-    activeProject().name = name.trim();
-  }, "Project renamed.");
-});
-
-$("deleteProject").addEventListener("click", () => {
-  if (compiling || importing) return;
-
-  const name =
-    projectName.value.trim() || "Untitled project";
-
-  if (
-    !confirm(
-      'Move "' + name +
-      '" to deleted projects? You can restore it later.'
-    )
-  ) {
-    return;
-  }
-
-  structuralChange(() => {
-    const project = activeProject();
-
-    state.trash.push(project);
-
-    state.projects = state.projects.filter(
-      item => item.id !== project.id
-    );
-
-    if (!state.projects.length) {
-      state.projects.push(
-        newProjectData("Untitled project")
-      );
-    }
-
-    state.activeId = state.projects[0].id;
-  }, "Project deleted. Use Restore last deleted to recover it.");
-});
-
-$("restoreProject").addEventListener("click", () => {
-  if (
-    compiling ||
-    importing ||
-    !state.trash.length
-  ) {
-    return;
-  }
-
-  structuralChange(() => {
-    const restored = state.trash.pop();
-
-    state.projects.push(restored);
-    state.activeId = restored.id;
-  }, "Project restored.");
-});
-
-$("backupProjects").addEventListener("click", () => {
-  captureCurrent();
-
-  downloadBlob(
-    new Blob(
-      [JSON.stringify(state, null, 2)],
-      { type: "application/json" }
-    ),
-    "ieop-projects-backup.json"
-  );
-});
-
-$("importButton").addEventListener("click", () => {
-  if (compiling || importing) return;
-  $("fileInput").click();
-});
-
-$("fileInput").addEventListener("change", async event => {
-  const file = event.target.files[0];
-
-  if (!file || compiling || importing) {
-    event.target.value = "";
-    return;
-  }
-
-  importing = true;
-  renderProjects();
-
-  try {
-    if (file.size > 150000) {
-      throw new Error(
-        "Please select a .tex file no larger than 150 KB."
-      );
-    }
-
-    if (
-      !confirm(
-        "Replace this project's source? Download a backup first if needed."
-      )
-    ) {
-      return;
-    }
-
-    editor.value = await file.text();
-    sourceChanged();
-  } catch (error) {
-    message(
-      error.message || "The source file could not be imported.",
-      "error"
-    );
-  } finally {
-    event.target.value = "";
-    importing = false;
-
-    renderProjects();
-    updatePdfState();
-  }
-});
-
-$("importProjects").addEventListener("click", () => {
-  if (compiling || importing) return;
-  $("backupInput").click();
-});
-
-$("backupInput").addEventListener("change", async event => {
-  const file = event.target.files[0];
-
-  if (!file || compiling || importing) {
-    event.target.value = "";
-    return;
-  }
-
-  importing = true;
-  renderProjects();
-
-  try {
-    if (file.size > 10000000) {
-      throw new Error("Backup exceeds the 10 MB import limit.");
-    }
-
-    const imported = validateState(
-      JSON.parse(await file.text())
-    );
-
-    captureCurrent();
-
-    // Add imported projects without replacing existing projects.
-    for (const project of imported.projects) {
-      state.projects.push(
-        newProjectData(
-          project.name + " (imported)",
-          project.source
-        )
-      );
-    }
-
-    for (const project of imported.trash) {
-      state.trash.push(
-        newProjectData(
-          project.name,
-          project.source
-        )
-      );
-    }
-
-    persist();
-
-    reportSave(
-      "Backup imported. Existing projects were kept."
-    );
-  } catch (error) {
-    message(
-      "Could not import backup: " + error.message,
-      "error"
-    );
-  } finally {
-    event.target.value = "";
-    importing = false;
-
-    renderProjects();
-    updatePdfState();
-  }
-});
-
-window.addEventListener("storage", event => {
-  if (
-    event.key === STORAGE_KEY ||
-    event.key === null
-  ) {
-    storageBlocked = true;
-    savingWorks = false;
-
-    message(
-      "Project storage changed in another tab. Saving is paused to avoid overwriting work. Back up this tab, then reload.",
-      "error"
-    );
-  }
-});
-
-window.addEventListener("pagehide", () => {
-  $("token").value = "";
-});
-
-loadActiveProject();
-
-if (!persist()) {
-  message(
-    "Browser project storage is unavailable or unreadable. Existing stored data was not overwritten. Back up any work in this tab.",
-    "error"
-  );
-} else {
-  message(
-    "Projects ready. Select a project or create a new one."
-  );
-}
+init();
 </script>
-
 </body>
 </html>
