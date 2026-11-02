@@ -376,6 +376,24 @@
   <main>
     <section class="panel" aria-label="Source editor">
       <h2 id="fileTitle" class="panel-title">main.tex</h2>
+     <div id="searchTools" class="toolbar">
+  <input
+    id="findText"
+    aria-label="Find text"
+    placeholder="Find in this file"
+    spellcheck="false"
+  >
+  <input
+    id="replaceText"
+    aria-label="Replacement text"
+    placeholder="Replace with"
+    spellcheck="false"
+  >
+  <button id="findNext" type="button">Find next</button>
+  <button id="replaceOne" type="button">Replace</button>
+  <button id="replaceAll" type="button">Replace all</button>
+  <span id="searchStatus" role="status" aria-live="polite"></span>
+</div>
 <div id="assetView" hidden><p id="assetInfo"></p><img id="assetImage" alt="Selected project image" hidden><button id="downloadAsset">Download selected file</button></div>
 
       <div id="codeEditor" class="code-editor">
@@ -559,6 +577,8 @@ function pdfState(){const fresh=pdfURL&&compiledSignature===signature();$("pdfBu
 function clearPDF(){if(pdfURL)URL.revokeObjectURL(pdfURL);pdfURL=null;compiledSignature=null;$("pdfViewer").removeAttribute("src");$("pdfViewer").hidden=true;$("emptyPreview").hidden=false;$("openPdf").removeAttribute("href");pdfState();}
 function renderList(id,items,selectedId,action,key){$(id).replaceChildren();for(const item of items){const b=document.createElement("button");b.textContent=key==="path"?item.path:(item.name.trim()||"Untitled project");b.className=(key==="path"?"file-item":"project-item")+(item[key]===selectedId?" selected":"");b.disabled=busy;if(item[key]===selectedId)b.setAttribute("aria-current","page");b.onclick=()=>action(item[key]);$(id).appendChild(b);}}
 function controls(){
+ $("replaceOne").disabled = busy;
+$("replaceAll").disabled = busy;
   $("addChapter").disabled = busy;
  for(const id of ["newProject","newBook","renameProject","deleteProject","importProjects","importButton","folderButton","newFile","renameFile","deleteFile","zipButton","compileButton"] )$(id).disabled=busy;
  $("projectName").disabled=busy;$("editor").readOnly=busy;
@@ -937,6 +957,128 @@ async function init(){
  $("projectName").value=current().name;document.querySelectorAll("button,input,textarea").forEach(x=>x.disabled=false);showFile();
  if(!blocked){const ok=await persist();msg(ok?"Projects ready. Use + Book project to start a book.":"Saving unavailable. Back up before leaving.",!ok);}
 }
+ function canSearch() {
+  return state && selected()?.kind === "text";
+}
+
+function findNextMatch() {
+  const editor = $("editor");
+  const query = $("findText").value;
+
+  if (!canSearch()) {
+    $("searchStatus").textContent = "Open a text file first.";
+    return;
+  }
+
+  if (!query) {
+    $("searchStatus").textContent = "Enter text to find.";
+    $("findText").focus();
+    return;
+  }
+
+  let index = editor.value.indexOf(query, editor.selectionEnd);
+
+  if (index < 0) {
+    index = editor.value.indexOf(query);
+  }
+
+  if (index < 0) {
+    $("searchStatus").textContent = "No matches.";
+    return;
+  }
+
+  editor.focus();
+  editor.setSelectionRange(index, index + query.length);
+
+  const line = editor.value.slice(0, index).split("\n").length;
+  editor.scrollTop = Math.max(0, (line - 3) * 24);
+  editor.scrollLeft = 0;
+  syncEditorScroll();
+  updatePosition();
+
+  $("searchStatus").textContent = "Match on line " + line + ".";
+}
+
+$("findNext").onclick = findNextMatch;
+
+$("replaceOne").onclick = () => {
+  if (busy || !canSearch()) return;
+
+  const editor = $("editor");
+  const query = $("findText").value;
+  if (!query) {
+    findNextMatch();
+    return;
+  }
+
+  const selection = editor.value.slice(
+    editor.selectionStart,
+    editor.selectionEnd
+  );
+
+  if (selection !== query) {
+    findNextMatch();
+    return;
+  }
+
+  editor.setRangeText(
+    $("replaceText").value,
+    editor.selectionStart,
+    editor.selectionEnd,
+    "end"
+  );
+
+  editor.oninput();
+  findNextMatch();
+};
+
+$("replaceAll").onclick = () => {
+  if (busy || !canSearch()) return;
+
+  const editor = $("editor");
+  const query = $("findText").value;
+
+  if (!query) {
+    findNextMatch();
+    return;
+  }
+
+  const parts = editor.value.split(query);
+  const count = parts.length - 1;
+
+  if (!count) {
+    $("searchStatus").textContent = "No matches.";
+    return;
+  }
+
+  if (!confirm("Replace all " + count + " matches in this file?")) {
+    return;
+  }
+
+  editor.value = parts.join($("replaceText").value);
+  editor.oninput();
+  $("searchStatus").textContent = count + " matches replaced.";
+};
+
+$("findText").addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    findNextMatch();
+  }
+});
+
+$("findText").addEventListener("input", () => {
+  $("searchStatus").textContent = "";
+});
+
+$("editor").addEventListener("keydown", event => {
+  if ((event.ctrlKey || event.metaKey) &&
+      event.key.toLowerCase() === "f") {
+    event.preventDefault();
+    $("findText").focus();
+    $("findText").select();
+  }
+});
 init();
 </script>
 </body>
