@@ -411,6 +411,7 @@
       <button id="newProject">+ New project</button>
       <button id="newBook">+ Book project</button>
       <button id="renameProject">Rename</button>
+     <button id="duplicateProject" type="button">Duplicate project</button>
       <button id="deleteProject">Delete</button>
       <button id="restoreProject">Restore last deleted</button>
       <button id="backupProjects">Back up projects</button>
@@ -997,6 +998,7 @@ function renderList(id, items, selectedId, action, key) {
 }
 
 function controls() {
+ $("duplicateProject").disabled = busy;
  $("compileChapterButton").disabled =
   busy ||
   selected()?.kind !== "text" ||
@@ -2495,6 +2497,29 @@ panelDivider.addEventListener("dblclick", () => {
 });
 
 setPanelShare(50);
+ $("duplicateProject").onclick = () => {
+  if (busy) return;
+
+  const name = prompt(
+    "Name for the copied project:",
+    current().name + " (copy)"
+  );
+
+  if (!name?.trim()) return;
+
+  mutate(() => {
+    const copy = structuredClone(current());
+
+    copy.id = uid();
+    copy.name = name.trim();
+
+    validateProject(copy);
+
+    state.projects.push(copy);
+    state.activeId = copy.id;
+    activePath = "main.tex";
+  }, "Project duplicated. You are now editing the copy.");
+};
 init();
 </script>
 </body>
