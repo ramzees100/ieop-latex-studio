@@ -458,6 +458,11 @@
   <main>
     <section class="panel" aria-label="Source editor">
       <h2 id="fileTitle" class="panel-title">main.tex</h2>
+     <div class="toolbar">
+  <button id="smallerFont" type="button">A−</button>
+  <span id="fontSizeLabel">14 px</span>
+  <button id="largerFont" type="button">A+</button>
+</div>
 
       <div id="searchTools" class="toolbar">
         <input id="findText" aria-label="Find text"
@@ -2006,8 +2011,7 @@ function findNextMatch() {
   const before = editor.value.slice(0, index);
   const line = before.split("\n").length;
   const column = index - before.lastIndexOf("\n") - 1;
-
-  editor.scrollTop = Math.max(0, (line - 3) * 24);
+ editor.scrollTop = Math.max(0, (line - 3) * editorLineHeight());
   editor.scrollLeft = Math.max(0, column * 8.5 - 40);
 
   syncEditorScroll();
@@ -2520,6 +2524,38 @@ setPanelShare(50);
     activePath = "main.tex";
   }, "Project duplicated. You are now editing the copy.");
 };
+ let editorFontSize = 14;
+
+function editorLineHeight() {
+  return parseFloat(getComputedStyle($("editor")).lineHeight) || 24;
+}
+
+function applyEditorFontSize() {
+  const lineHeight = Math.round(editorFontSize * 1.7);
+
+  for (const id of ["editor", "highlight", "lineNumbers"]) {
+    $(id).style.fontSize = editorFontSize + "px";
+    $(id).style.lineHeight = lineHeight + "px";
+  }
+
+  $("fontSizeLabel").textContent = editorFontSize + " px";
+  $("smallerFont").disabled = editorFontSize <= 10;
+  $("largerFont").disabled = editorFontSize >= 24;
+
+  syncEditorScroll();
+}
+
+$("smallerFont").onclick = () => {
+  editorFontSize = Math.max(10, editorFontSize - 1);
+  applyEditorFontSize();
+};
+
+$("largerFont").onclick = () => {
+  editorFontSize = Math.min(24, editorFontSize + 1);
+  applyEditorFontSize();
+};
+
+applyEditorFontSize();
 init();
 </script>
 </body>
