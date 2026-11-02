@@ -4,22 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IEOP LaTeX Studio</title>
+
 <style>
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
+
   body {
     margin: 0;
     background: #eef2f6;
     color: #203047;
     font-family: Arial, sans-serif;
   }
+
   header {
     padding: 20px 24px;
     background: #122b46;
     color: white;
   }
-  header h1 { margin: 0; font-size: 24px; }
-  header p { margin: 8px 0 0; color: #c4d5e5; }
-  .toolbar, .connection {
+
+  header h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  header p {
+    margin: 8px 0 0;
+    color: #c4d5e5;
+  }
+
+  .toolbar,
+  .connection {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -28,16 +43,26 @@
     background: white;
     border-bottom: 1px solid #d8e1eb;
   }
+
   input {
+    min-width: 160px;
     padding: 10px;
     border: 1px solid #cad5e2;
     border-radius: 6px;
     font-size: 15px;
-    min-width: 180px;
   }
-  #projectName { flex: 1; }
-  #token { width: 290px; max-width: 100%; }
-  button, .button-link {
+
+  #projectName {
+    flex: 1;
+  }
+
+  #token {
+    width: 290px;
+    max-width: 100%;
+  }
+
+  button,
+  .button-link {
     padding: 11px 16px;
     border: 1px solid #cad5e2;
     border-radius: 6px;
@@ -47,11 +72,32 @@
     cursor: pointer;
     text-decoration: none;
   }
-  button:hover, .button-link:hover { background: #edf3f9; }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  .primary { background: #176b52; border-color: #176b52; color: white; }
-  .primary:hover { background: #10533f; }
-  :focus-visible { outline: 3px solid #79a9dc; outline-offset: 2px; }
+
+  button:hover,
+  .button-link:hover {
+    background: #edf3f9;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .primary {
+    background: #176b52;
+    border-color: #176b52;
+    color: white;
+  }
+
+  .primary:hover {
+    background: #10533f;
+  }
+
+  :focus-visible {
+    outline: 3px solid #79a9dc;
+    outline-offset: 2px;
+  }
+
   .notice {
     padding: 12px 24px;
     background: #fff6dd;
@@ -59,18 +105,77 @@
     font-size: 13px;
     line-height: 1.6;
   }
-  .hint { color: #526579; font-size: 12px; }
+
+  .hint {
+    color: #526579;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .studio-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .projects-sidebar {
+    padding: 18px 12px;
+    background: #f8fafc;
+    border-right: 1px solid #cad5e2;
+  }
+
+  .projects-sidebar h2 {
+    margin: 0 0 15px;
+    font-size: 16px;
+  }
+
+  .project-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .project-tools button {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  #projectList {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .project-item {
+    width: 100%;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .project-item.selected {
+    background: #dceee5;
+    border-color: #176b52;
+    color: #10533f;
+    font-weight: bold;
+  }
+
   main {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-width: 0;
   }
-  .panel { min-width: 0; }
+
+  .panel {
+    min-width: 0;
+  }
+
   .panel-title {
     margin: 0;
     padding: 14px 20px;
     background: #e4ebf3;
     font-size: 14px;
   }
+
   textarea {
     display: block;
     width: 100%;
@@ -84,7 +189,11 @@
     font: 14px/1.7 Consolas, monospace;
     tab-size: 2;
   }
-  .preview-panel { border-left: 1px solid #ccd7e3; }
+
+  .preview-panel {
+    border-left: 1px solid #ccd7e3;
+  }
+
   #pdfViewer {
     display: block;
     width: 100%;
@@ -93,29 +202,80 @@
     border: 0;
     background: #dce3eb;
   }
+
   #emptyPreview {
     padding: 70px 30px;
     text-align: center;
     color: #526579;
     line-height: 1.8;
   }
+
   footer {
     padding: 15px 24px;
     background: white;
     font-size: 13px;
     line-height: 1.7;
   }
-  #status { white-space: pre-wrap; overflow-wrap: anywhere; }
-  #status.error { color: #a32222; }
-  #status.success { color: #176b52; }
-  [hidden] { display: none !important; }
-  @media (max-width: 800px) {
-    main { grid-template-columns: 1fr; }
-    .preview-panel { border-left: none; }
-    .toolbar, .connection { padding: 12px; }
+
+  #status {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  #status.error {
+    color: #a32222;
+  }
+
+  #status.success {
+    color: #176b52;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  @media (max-width: 1100px) {
+    .studio-layout {
+      grid-template-columns: 180px minmax(0, 1fr);
+    }
+
+    main {
+      grid-template-columns: 1fr;
+    }
+
+    .preview-panel {
+      border-left: none;
+    }
+  }
+
+  @media (max-width: 650px) {
+    .studio-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .projects-sidebar {
+      border-right: none;
+      border-bottom: 1px solid #cad5e2;
+    }
+
+    #projectList {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+
+    .project-item {
+      width: auto;
+      max-width: 100%;
+    }
+
+    .toolbar,
+    .connection {
+      padding: 12px;
+    }
   }
 </style>
 </head>
+
 <body>
 
 <header>
@@ -124,75 +284,160 @@
 </header>
 
 <div class="toolbar">
-  <input id="projectName" aria-label="Project name"
-         value="My first document">
+  <input
+    id="projectName"
+    aria-label="Project name"
+    value="My first document"
+  >
+
   <button id="importButton">Import .tex</button>
   <button id="sourceButton">Download .tex</button>
-  <button id="compileButton" class="primary">Compile</button>
-  <button id="pdfButton" disabled>Download PDF</button>
-  <a id="openPdf" class="button-link" target="_blank"
-     rel="noopener" hidden>Open PDF</a>
+
+  <button id="compileButton" class="primary">
+    Compile
+  </button>
+
+  <button id="pdfButton" disabled>
+    Download PDF
+  </button>
+
+  <a
+    id="openPdf"
+    class="button-link"
+    target="_blank"
+    rel="noopener"
+    hidden
+  >Open PDF</a>
 </div>
 
 <div class="connection">
   <label for="token">Compiler access token:</label>
-  <input id="token" type="password"
-         placeholder="Enter your private token"
-         autocomplete="off" spellcheck="false">
+
+  <input
+    id="token"
+    type="password"
+    placeholder="Enter your private token"
+    autocomplete="off"
+    spellcheck="false"
+  >
+
   <button id="clearToken">Clear token</button>
+
   <span class="hint">
-    The token is kept only until this page is closed or refreshed.
+    The token is not saved by this application.
+    Enter it again after refreshing.
   </span>
 </div>
 
 <div class="notice">
-  Clicking <strong>Compile</strong> sends your LaTeX source to your
-  Render compiler to generate a PDF. This version supports one
-  self-contained .tex file using pdfLaTeX; additional images,
-  bibliography files, and custom class uploads are not supported yet.
-  The free server may take about a minute to wake up.
+  Clicking <strong>Compile</strong> sends the active project's
+  LaTeX source to your Render compiler.
+  Each project currently supports one self-contained .tex file
+  using pdfLaTeX. Additional image files, bibliography files,
+  and custom class uploads are not supported yet.
+  An idle server may take about a minute to wake up.
 </div>
 
-<main>
-  <section class="panel" aria-label="Source editor">
-    <h2 class="panel-title">main.tex — LaTeX source</h2>
-    <textarea id="editor" aria-label="LaTeX source"
-              spellcheck="false"></textarea>
-  </section>
+<div class="studio-layout">
 
-  <section class="panel preview-panel" aria-label="PDF preview">
-    <h2 id="previewTitle" class="panel-title">PDF preview</h2>
-    <div id="emptyPreview">
-      <strong>Your compiled PDF will appear here.</strong><br>
-      Enter your compiler token, then click Compile.
+  <aside class="projects-sidebar" aria-label="Projects">
+    <h2>My projects</h2>
+
+    <div class="project-tools">
+      <button id="newProject">+ New project</button>
+      <button id="renameProject">Rename</button>
+      <button id="deleteProject">Delete</button>
+      <button id="restoreProject">Restore last deleted</button>
+      <button id="backupProjects">Back up projects</button>
+      <button id="importProjects">Import backup</button>
     </div>
-    <iframe id="pdfViewer" title="Compiled PDF preview" hidden></iframe>
-  </section>
-</main>
+
+    <nav id="projectList" aria-label="Choose a project"></nav>
+
+    <p class="hint">
+      Projects save separately in this browser.
+      Back them up to keep a copy.
+      Compile after opening a project to generate its PDF.
+    </p>
+  </aside>
+
+  <main>
+    <section class="panel" aria-label="Source editor">
+      <h2 class="panel-title">main.tex — LaTeX source</h2>
+
+      <textarea
+        id="editor"
+        aria-label="LaTeX source"
+        spellcheck="false"
+      ></textarea>
+    </section>
+
+    <section class="panel preview-panel" aria-label="PDF preview">
+      <h2 id="previewTitle" class="panel-title">
+        PDF preview
+      </h2>
+
+      <div id="emptyPreview">
+        <strong>Your compiled PDF will appear here.</strong>
+        <br>
+        Enter your compiler token, then click Compile.
+      </div>
+
+      <iframe
+        id="pdfViewer"
+        title="Compiled PDF preview"
+        hidden
+      ></iframe>
+    </section>
+  </main>
+
+</div>
 
 <footer>
-  <div id="status" role="status" aria-live="polite">Workspace ready.</div>
+  <div id="status" role="status" aria-live="polite">
+    Workspace ready.
+  </div>
+
   <div class="hint">
-    Source saves in this browser only. Download a backup.
+    Projects save in this browser only.
     Accounts and cloud project storage are not connected yet.
+    Use Back up projects regularly.
   </div>
 </footer>
 
-<input id="fileInput" type="file" accept=".tex,text/plain" hidden>
+<input
+  id="fileInput"
+  type="file"
+  accept=".tex,text/plain"
+  hidden
+>
+
+<input
+  id="backupInput"
+  type="file"
+  accept=".json,application/json"
+  hidden
+>
 
 <script>
 "use strict";
 
 const COMPILER = "https://ieop-latex-compiler.onrender.com";
-const storageKey = "ieop-latex-studio-v1";
+const STORAGE_KEY = "ieop-latex-studio-projects-v1";
+const LEGACY_KEY = "ieop-latex-studio-v1";
+
 const $ = id => document.getElementById(id);
 
 const editor = $("editor");
 const projectName = $("projectName");
+
+let state;
+let compiling = false;
+let importing = false;
+let savingWorks = true;
+let storageBlocked = false;
 let pdfUrl = null;
 let compiledSource = null;
-let compiling = false;
-let savingWorks = true;
 
 const starter = String.raw`\documentclass[12pt]{article}
 \usepackage{amsmath}
@@ -219,18 +464,8 @@ Write your conclusion here.
 
 \end{document}`;
 
-editor.value = starter;
-
-try {
-  const saved = JSON.parse(localStorage.getItem(storageKey));
-  if (saved && typeof saved.source === "string") {
-    editor.value = saved.source;
-  }
-  if (saved && typeof saved.name === "string") {
-    projectName.value = saved.name;
-  }
-} catch {
-  savingWorks = false;
+function makeId() {
+  return crypto.randomUUID();
 }
 
 function message(text, kind = "") {
@@ -238,60 +473,297 @@ function message(text, kind = "") {
   $("status").className = kind;
 }
 
-function saveDocument() {
+function newProjectData(name, source = starter) {
+  return {
+    id: makeId(),
+    name,
+    source
+  };
+}
+
+function freshState(name, source) {
+  const project = newProjectData(name, source);
+
+  return {
+    activeId: project.id,
+    projects: [project],
+    trash: []
+  };
+}
+
+function validProject(project) {
+  return (
+    project &&
+    typeof project.id === "string" &&
+    typeof project.name === "string" &&
+    typeof project.source === "string"
+  );
+}
+
+function validateState(candidate) {
+  if (
+    !candidate ||
+    !Array.isArray(candidate.projects) ||
+    candidate.projects.length === 0 ||
+    !candidate.projects.every(validProject) ||
+    !Array.isArray(candidate.trash) ||
+    !candidate.trash.every(validProject)
+  ) {
+    throw new Error("Invalid project data.");
+  }
+
+  const ids = [
+    ...candidate.projects,
+    ...candidate.trash
+  ].map(project => project.id);
+
+  if (new Set(ids).size !== ids.length) {
+    throw new Error("Duplicate project identifiers.");
+  }
+
+  if (
+    !candidate.projects.some(
+      project => project.id === candidate.activeId
+    )
+  ) {
+    candidate.activeId = candidate.projects[0].id;
+  }
+
+  return candidate;
+}
+
+try {
+  const saved = localStorage.getItem(STORAGE_KEY);
+
+  if (saved !== null) {
+    state = validateState(JSON.parse(saved));
+  } else {
+    const legacy = JSON.parse(
+      localStorage.getItem(LEGACY_KEY) || "null"
+    );
+
+    state = freshState(
+      typeof legacy?.name === "string"
+        ? legacy.name
+        : "My first document",
+
+      typeof legacy?.source === "string"
+        ? legacy.source
+        : starter
+    );
+  }
+} catch {
+  storageBlocked = true;
+  savingWorks = false;
+  state = freshState("Recovery workspace", starter);
+}
+
+function activeProject() {
+  return state.projects.find(
+    project => project.id === state.activeId
+  );
+}
+
+function captureCurrent() {
+  const project = activeProject();
+  project.name = projectName.value;
+  project.source = editor.value;
+}
+
+function persist() {
+  if (storageBlocked) {
+    savingWorks = false;
+    return false;
+  }
+
   try {
-    localStorage.setItem(storageKey, JSON.stringify({
-      name: projectName.value,
-      source: editor.value
-    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     savingWorks = true;
+    return true;
   } catch {
     savingWorks = false;
+    return false;
   }
 }
 
+function renderProjects() {
+  $("projectList").replaceChildren();
+
+  for (const project of state.projects) {
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className = "project-item";
+    button.textContent =
+      project.name.trim() || "Untitled project";
+
+    if (project.id === state.activeId) {
+      button.classList.add("selected");
+      button.setAttribute("aria-current", "page");
+    }
+
+    button.disabled = compiling || importing;
+
+    button.addEventListener("click", () => {
+      switchProject(project.id);
+    });
+
+    $("projectList").appendChild(button);
+  }
+
+  const busy = compiling || importing;
+
+  for (const id of [
+    "newProject",
+    "renameProject",
+    "deleteProject",
+    "importProjects",
+    "importButton"
+  ]) {
+    $(id).disabled = busy;
+  }
+
+  $("restoreProject").disabled =
+    busy || state.trash.length === 0;
+
+  $("compileButton").disabled = busy;
+}
+
+function saveDocument() {
+  captureCurrent();
+  const success = persist();
+  renderProjects();
+  return success;
+}
+
 function updatePdfState() {
-  const current = pdfUrl !== null && editor.value === compiledSource;
+  const current =
+    pdfUrl !== null && editor.value === compiledSource;
+
   $("pdfButton").disabled = !current || compiling;
   $("openPdf").hidden = !current;
-  $("previewTitle").textContent = pdfUrl && !current
-    ? "PDF preview — previous compilation; compile your changes"
-    : "PDF preview";
+
+  $("previewTitle").textContent =
+    pdfUrl && !current
+      ? "PDF preview — previous compilation; compile your changes"
+      : "PDF preview";
+}
+
+function clearPdf() {
+  $("pdfViewer").removeAttribute("src");
+  $("pdfViewer").hidden = true;
+  $("emptyPreview").hidden = false;
+  $("openPdf").removeAttribute("href");
+
+  if (pdfUrl) {
+    URL.revokeObjectURL(pdfUrl);
+  }
+
+  pdfUrl = null;
+  compiledSource = null;
+  updatePdfState();
+}
+
+function loadActiveProject() {
+  const project = activeProject();
+
+  editor.value = project.source;
+  projectName.value = project.name;
+
+  clearPdf();
+  renderProjects();
+}
+
+function reportSave(successMessage) {
+  if (savingWorks) {
+    message(successMessage);
+  } else {
+    message(
+      "Changes are kept in memory only. Browser saving is unavailable. Back up your projects before leaving.",
+      "error"
+    );
+  }
+}
+
+function switchProject(id) {
+  if (
+    compiling ||
+    importing ||
+    id === state.activeId
+  ) {
+    return;
+  }
+
+  captureCurrent();
+  state.activeId = id;
+  persist();
+  loadActiveProject();
+
+  reportSave(
+    "Project opened. Click Compile to generate its PDF."
+  );
+}
+
+function structuralChange(action, successMessage) {
+  if (compiling || importing) return;
+
+  captureCurrent();
+  action();
+  persist();
+  loadActiveProject();
+  reportSave(successMessage);
 }
 
 function sourceChanged() {
   saveDocument();
   updatePdfState();
+
   if (!compiling) {
-    message(savingWorks
-      ? "Saved in this browser. Click Compile to update the PDF."
-      : "Browser saving is unavailable. Download a source backup.");
+    reportSave(
+      "Saved in this browser. Click Compile to update the PDF."
+    );
   }
 }
 
 function safeName() {
-  return projectName.value
-    .replace(/[^a-zA-Z0-9 _-]/g, "")
-    .trim() || "document";
+  return (
+    projectName.value
+      .replace(/[^a-zA-Z0-9 _-]/g, "")
+      .trim() || "document"
+  );
 }
 
 function download(url, filename) {
   const link = document.createElement("a");
+
   link.href = url;
   link.download = filename;
+
   document.body.appendChild(link);
   link.click();
   link.remove();
 }
 
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  download(url, filename);
+
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
 async function compileDocument() {
-  if (compiling) return;
+  if (compiling || importing) return;
 
   const token = $("token").value.trim();
   const source = editor.value;
 
   if (!token) {
-    message("Enter your compiler access token first.", "error");
+    message(
+      "Enter your compiler access token first.",
+      "error"
+    );
     $("token").focus();
     return;
   }
@@ -302,41 +774,53 @@ async function compileDocument() {
   }
 
   if (new TextEncoder().encode(source).length > 150000) {
-    message("Source exceeds the compiler's 150 KB limit.", "error");
+    message(
+      "Source exceeds the compiler's 150 KB limit.",
+      "error"
+    );
     return;
   }
 
   compiling = true;
-  $("compileButton").disabled = true;
   $("compileButton").textContent = "Compiling…";
-  updatePdfState();
+
   saveDocument();
+  updatePdfState();
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 150000);
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 150000);
 
   try {
-    message("Connecting to the compiler. An idle server may need a minute to wake up.");
+    message(
+      "Connecting to the compiler. An idle server may need a minute to wake up."
+    );
 
-    // Wake the server without sending the source or token.
     const health = await fetch(COMPILER + "/", {
       signal: controller.signal,
       credentials: "omit",
-      cache: "no-store"
+      cache: "no-store",
+      redirect: "error"
     });
 
     if (!health.ok) {
-      throw new Error("The compiler is not ready. Please try again shortly.");
+      throw new Error(
+        "The compiler is not ready. Please try again shortly."
+      );
     }
 
     message("Compiling your LaTeX document…");
 
     const response = await fetch(COMPILER + "/compile", {
       method: "POST",
+
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + token
       },
+
       body: JSON.stringify({ source }),
       signal: controller.signal,
       credentials: "omit",
@@ -346,29 +830,41 @@ async function compileDocument() {
 
     if (!response.ok) {
       let detail = {};
+
       try {
         detail = await response.json();
       } catch {}
 
       if (response.status === 401) {
-        throw new Error("Access denied. Check your compiler token.");
+        throw new Error(
+          "Access denied. Check your compiler token."
+        );
       }
 
-      throw new Error(detail.error ||
-        "Compilation failed (HTTP " + response.status + ").");
+      throw new Error(
+        detail.error ||
+        "Compilation failed (HTTP " +
+          response.status + ")."
+      );
     }
 
-    const type = response.headers.get("Content-Type") || "";
-    if (!type.toLowerCase().includes("application/pdf")) {
+    const contentType =
+      response.headers.get("Content-Type") || "";
+
+    if (
+      !contentType.toLowerCase().includes("application/pdf")
+    ) {
       throw new Error("The server did not return a PDF.");
     }
 
     const blob = await response.blob();
+
     if (!blob.size) {
       throw new Error("The server returned an empty PDF.");
     }
 
     const previousUrl = pdfUrl;
+
     pdfUrl = URL.createObjectURL(blob);
     compiledSource = source;
 
@@ -378,19 +874,21 @@ async function compileDocument() {
     $("openPdf").href = pdfUrl;
 
     if (previousUrl) {
-      setTimeout(() => URL.revokeObjectURL(previousUrl), 1000);
+      setTimeout(() => {
+        URL.revokeObjectURL(previousUrl);
+      }, 1000);
     }
 
     message(
       editor.value === source
         ? "PDF compiled successfully. You can preview or download it."
-        : "PDF compiled, but you edited the source during compilation. Compile again to include those changes.",
+        : "PDF compiled, but the source changed during compilation. Compile again to include your latest edits.",
       "success"
     );
 
     if (!savingWorks) {
       $("status").textContent +=
-        " Browser saving is unavailable; download a source backup.";
+        " Browser saving is unavailable; download a backup.";
     }
   } catch (error) {
     if (error.name === "AbortError") {
@@ -404,81 +902,309 @@ async function compileDocument() {
         "error"
       );
     } else {
-      message(error.message || "Compilation failed.", "error");
+      message(
+        error.message || "Compilation failed.",
+        "error"
+      );
     }
   } finally {
     clearTimeout(timeout);
     compiling = false;
-    $("compileButton").disabled = false;
+
     $("compileButton").textContent = "Compile";
+
+    renderProjects();
     updatePdfState();
   }
 }
 
 editor.addEventListener("input", sourceChanged);
-projectName.addEventListener("input", saveDocument);
+
+projectName.addEventListener("input", () => {
+  if (!saveDocument()) {
+    message(
+      "Browser saving failed. Back up your projects.",
+      "error"
+    );
+  }
+});
 
 editor.addEventListener("keydown", event => {
   if (event.key === "Tab") {
     event.preventDefault();
+
     editor.setRangeText(
-      "  ", editor.selectionStart, editor.selectionEnd, "end"
+      "  ",
+      editor.selectionStart,
+      editor.selectionEnd,
+      "end"
     );
+
     sourceChanged();
   }
 
-  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+  if (
+    (event.ctrlKey || event.metaKey) &&
+    event.key === "Enter"
+  ) {
     event.preventDefault();
     compileDocument();
   }
 });
 
-$("compileButton").addEventListener("click", compileDocument);
+$("compileButton").addEventListener(
+  "click",
+  compileDocument
+);
 
 $("clearToken").addEventListener("click", () => {
   $("token").value = "";
-  message("Token cleared from the input.");
+
+  message(
+    compiling
+      ? "Token cleared from the input. The current compilation is already in progress."
+      : "Token cleared."
+  );
 });
 
 $("sourceButton").addEventListener("click", () => {
-  const blob = new Blob([editor.value], {
-    type: "text/plain;charset=utf-8"
-  });
-  const url = URL.createObjectURL(blob);
-  download(url, safeName() + ".tex");
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadBlob(
+    new Blob([editor.value], {
+      type: "text/plain;charset=utf-8"
+    }),
+    safeName() + ".tex"
+  );
 });
 
 $("pdfButton").addEventListener("click", () => {
-  if (pdfUrl && editor.value === compiledSource) {
+  if (
+    pdfUrl &&
+    editor.value === compiledSource
+  ) {
     download(pdfUrl, safeName() + ".pdf");
   }
 });
 
+$("newProject").addEventListener("click", () => {
+  if (compiling || importing) return;
+
+  const name = prompt(
+    "New project name:",
+    "Untitled project"
+  );
+
+  if (name === null || !name.trim()) return;
+
+  structuralChange(() => {
+    const project = newProjectData(name.trim());
+
+    state.projects.push(project);
+    state.activeId = project.id;
+  }, "New project created.");
+});
+
+$("renameProject").addEventListener("click", () => {
+  if (compiling || importing) return;
+
+  const name = prompt(
+    "Project name:",
+    projectName.value
+  );
+
+  if (name === null || !name.trim()) return;
+
+  structuralChange(() => {
+    activeProject().name = name.trim();
+  }, "Project renamed.");
+});
+
+$("deleteProject").addEventListener("click", () => {
+  if (compiling || importing) return;
+
+  const name =
+    projectName.value.trim() || "Untitled project";
+
+  if (
+    !confirm(
+      'Move "' + name +
+      '" to deleted projects? You can restore it later.'
+    )
+  ) {
+    return;
+  }
+
+  structuralChange(() => {
+    const project = activeProject();
+
+    state.trash.push(project);
+
+    state.projects = state.projects.filter(
+      item => item.id !== project.id
+    );
+
+    if (!state.projects.length) {
+      state.projects.push(
+        newProjectData("Untitled project")
+      );
+    }
+
+    state.activeId = state.projects[0].id;
+  }, "Project deleted. Use Restore last deleted to recover it.");
+});
+
+$("restoreProject").addEventListener("click", () => {
+  if (
+    compiling ||
+    importing ||
+    !state.trash.length
+  ) {
+    return;
+  }
+
+  structuralChange(() => {
+    const restored = state.trash.pop();
+
+    state.projects.push(restored);
+    state.activeId = restored.id;
+  }, "Project restored.");
+});
+
+$("backupProjects").addEventListener("click", () => {
+  captureCurrent();
+
+  downloadBlob(
+    new Blob(
+      [JSON.stringify(state, null, 2)],
+      { type: "application/json" }
+    ),
+    "ieop-projects-backup.json"
+  );
+});
+
 $("importButton").addEventListener("click", () => {
+  if (compiling || importing) return;
   $("fileInput").click();
 });
 
 $("fileInput").addEventListener("change", async event => {
   const file = event.target.files[0];
-  if (!file) return;
+
+  if (!file || compiling || importing) {
+    event.target.value = "";
+    return;
+  }
+
+  importing = true;
+  renderProjects();
 
   try {
     if (file.size > 150000) {
-      message("Please select a .tex file no larger than 150 KB.", "error");
-      return;
+      throw new Error(
+        "Please select a .tex file no larger than 150 KB."
+      );
     }
 
-    if (!confirm("Replace the current source? Download a backup first if needed.")) {
+    if (
+      !confirm(
+        "Replace this project's source? Download a backup first if needed."
+      )
+    ) {
       return;
     }
 
     editor.value = await file.text();
     sourceChanged();
-  } catch {
-    message("The source file could not be imported.", "error");
+  } catch (error) {
+    message(
+      error.message || "The source file could not be imported.",
+      "error"
+    );
   } finally {
     event.target.value = "";
+    importing = false;
+
+    renderProjects();
+    updatePdfState();
+  }
+});
+
+$("importProjects").addEventListener("click", () => {
+  if (compiling || importing) return;
+  $("backupInput").click();
+});
+
+$("backupInput").addEventListener("change", async event => {
+  const file = event.target.files[0];
+
+  if (!file || compiling || importing) {
+    event.target.value = "";
+    return;
+  }
+
+  importing = true;
+  renderProjects();
+
+  try {
+    if (file.size > 10000000) {
+      throw new Error("Backup exceeds the 10 MB import limit.");
+    }
+
+    const imported = validateState(
+      JSON.parse(await file.text())
+    );
+
+    captureCurrent();
+
+    // Add imported projects without replacing existing projects.
+    for (const project of imported.projects) {
+      state.projects.push(
+        newProjectData(
+          project.name + " (imported)",
+          project.source
+        )
+      );
+    }
+
+    for (const project of imported.trash) {
+      state.trash.push(
+        newProjectData(
+          project.name,
+          project.source
+        )
+      );
+    }
+
+    persist();
+
+    reportSave(
+      "Backup imported. Existing projects were kept."
+    );
+  } catch (error) {
+    message(
+      "Could not import backup: " + error.message,
+      "error"
+    );
+  } finally {
+    event.target.value = "";
+    importing = false;
+
+    renderProjects();
+    updatePdfState();
+  }
+});
+
+window.addEventListener("storage", event => {
+  if (
+    event.key === STORAGE_KEY ||
+    event.key === null
+  ) {
+    storageBlocked = true;
+    savingWorks = false;
+
+    message(
+      "Project storage changed in another tab. Saving is paused to avoid overwriting work. Back up this tab, then reload.",
+      "error"
+    );
   }
 });
 
@@ -486,9 +1212,19 @@ window.addEventListener("pagehide", () => {
   $("token").value = "";
 });
 
-if (!savingWorks) {
-  message("Browser saving is unavailable. Download your source to keep it.", "error");
+loadActiveProject();
+
+if (!persist()) {
+  message(
+    "Browser project storage is unavailable or unreadable. Existing stored data was not overwritten. Back up any work in this tab.",
+    "error"
+  );
+} else {
+  message(
+    "Projects ready. Select a project or create a new one."
+  );
 }
 </script>
+
 </body>
 </html>
