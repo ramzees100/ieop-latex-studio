@@ -362,10 +362,13 @@
     <nav id="projectList" aria-label="Choose a project"></nav>
 
     <h2 class="files-heading">Project files</h2>
-    <div class="project-tools"><button id="newFile">+ Text file</button><button id="renameFile">Rename file</button><button id="deleteFile">Delete file</button><button id="restoreFile">Restore file</button></div>
-    <nav id="fileList" aria-label="Choose a file"></nav>
-    <p class="hint">New files can use paths such as chapters/chapter1.tex or images/figure.png. main.tex always stays at the project root.</p>
-  </aside>
+    <div class="project-tools">
+  <button id="newFile">+ Text file</button>
+  <button id="addChapter">+ Add chapter</button>
+  <button id="renameFile">Rename file</button>
+  <button id="deleteFile">Delete file</button>
+  <button id="restoreFile">Restore file</button>
+</div>
 
   <main>
     <section class="panel" aria-label="Source editor">
@@ -553,6 +556,7 @@ function pdfState(){const fresh=pdfURL&&compiledSignature===signature();$("pdfBu
 function clearPDF(){if(pdfURL)URL.revokeObjectURL(pdfURL);pdfURL=null;compiledSignature=null;$("pdfViewer").removeAttribute("src");$("pdfViewer").hidden=true;$("emptyPreview").hidden=false;$("openPdf").removeAttribute("href");pdfState();}
 function renderList(id,items,selectedId,action,key){$(id).replaceChildren();for(const item of items){const b=document.createElement("button");b.textContent=key==="path"?item.path:(item.name.trim()||"Untitled project");b.className=(key==="path"?"file-item":"project-item")+(item[key]===selectedId?" selected":"");b.disabled=busy;if(item[key]===selectedId)b.setAttribute("aria-current","page");b.onclick=()=>action(item[key]);$(id).appendChild(b);}}
 function controls(){
+  $("addChapter").disabled = busy;
  for(const id of ["newProject","newBook","renameProject","deleteProject","importProjects","importButton","folderButton","newFile","renameFile","deleteFile","zipButton","compileButton"] )$(id).disabled=busy;
  $("projectName").disabled=busy;$("editor").readOnly=busy;
  $("restoreProject").disabled=busy||!state.trash.length;$("restoreFile").disabled=busy||!current().deletedFiles.length;
@@ -628,22 +632,281 @@ $("pdfButton").onclick=()=>{if(pdfURL&&compiledSignature===signature()){const a=
 $("zipButton").onclick=()=>{capture();try{validateProject(current());download(makeZIP(current().files),filename()+".zip");}catch(e){msg(e.message,true);}};
 function addProject(book){if(busy)return;const name=prompt("Project name:",book?"My Book":"Untitled project");if(!name?.trim())return;mutate(()=>{const p=newProject(name.trim(),book?bookMain:article);if(book)p.files.push(textFile("chapters/chapter1.tex",chapter1),textFile("chapters/chapter2.tex",String.raw`\chapter{Next Steps}
 Write your second chapter here.`),textFile("references.bib",refs));state.projects.push(p);state.activeId=p.id;activePath="main.tex";},book?"Book created with two chapters and references.":"Project created.");}
-$("newProject").onclick=()=>addProject(false);$("newBook").onclick=()=>addProject(true);
-$("renameProject").onclick=()=>{const name=prompt("Project name:",current().name);if(name?.trim())mutate(()=>current().name=name.trim(),"Project renamed.");};
-$("deleteProject").onclick=()=>{if(confirm("Move this project to deleted projects?"))mutate(()=>{const old=current();state.trash.push(old);state.projects=state.projects.filter(p=>p.id!==old.id);if(!state.projects.length)state.projects.push(newProject("Untitled project"));state.activeId=state.projects[0].id;activePath="main.tex";},"Project moved to deleted projects.");};
-$("restoreProject").onclick=()=>mutate(()=>{if(!state.trash.length)return;const p=state.trash.pop();state.projects.push(p);state.activeId=p.id;activePath="main.tex";},"Project restored.");
-$("newFile").onclick=()=>{const path=prompt("Text file path (for example chapters/chapter3.tex):","chapters/chapter3.tex");if(!path)return;mutate(()=>{validPath(path);if(!textExt.has(ext(path)))throw Error("Create a text file here; use Upload files for images.");const p=structuredClone(current());p.files.push(textFile(path,""));validateProject(p);current().files=p.files;activePath=path;},"File created. Reference it from main.tex to include it in compilation.");};
-$("renameFile").onclick=()=>{if(activePath==="main.tex")return;const path=prompt("New file path:",activePath);if(!path)return;mutate(()=>{validPath(path);if(ext(path)!==ext(activePath))throw Error("Keep the same file extension.");const p=structuredClone(current());p.files.find(f=>f.path===activePath).path=path;validateProject(p);current().files=p.files;activePath=path;},"File renamed. Update any LaTeX references to its old path.");};
-$("deleteFile").onclick=()=>{if(activePath==="main.tex"||!confirm("Delete "+activePath+"? You can restore it."))return;mutate(()=>{const p=current();p.deletedFiles.push(selected());p.files=p.files.filter(f=>f.path!==activePath);activePath="main.tex";},"File deleted. Update references or restore it before compiling.");};
-$("restoreFile").onclick=()=>mutate(()=>{const p=current(),f=p.deletedFiles.at(-1);if(!f)return;const next=structuredClone(p);if(next.files.some(g=>g.path.toLowerCase()===f.path.toLowerCase()))throw Error("Rename the existing file at "+f.path+" before restoring this version.");next.files.push(f);next.deletedFiles.pop();validateProject(next);p.files=next.files;p.deletedFiles=next.deletedFiles;activePath=f.path;},"File restored.");
-$("importButton").onclick=()=>$("fileInput").click();$("folderButton").onclick=()=>$("folderInput").click();
-$("fileInput").onchange=async e=>{await upload(e.target.files,false);e.target.value="";};$("folderInput").onchange=async e=>{await upload(e.target.files,true);e.target.value="";};
-$("backupProjects").onclick=()=>{capture();download(new Blob([JSON.stringify(state)],{type:"application/json"}),"ieop-projects-backup.json");};
-$("importProjects").onclick=()=>$("backupInput").click();
-$("backupInput").onchange=async e=>{if(busy)return;const file=e.target.files[0];if(!file)return;busy=true;capture();controls();try{if(file.size>100*MB)throw Error("Backup exceeds 100 MB.");const data=normalize(JSON.parse(await file.text()));for(const p of data.projects){p.id=uid();p.name+=" (imported)";state.projects.push(p);}for(const p of data.trash){p.id=uid();state.trash.push(p);}const ok=await persist();msg(ok?"Backup imported; existing projects kept.":"Backup imported in memory only. Saving unavailable.",!ok);}catch(err){msg(err.message,true);}finally{busy=false;e.target.value="";controls();}};
-channel&&(channel.onmessage=e=>{if(e.data.sessionId!==sessionId){blocked=true;storageOK=false;msg("Projects changed in another tab. Back up this tab, then reload. Saving is paused.",true);}});
-window.addEventListener("beforeunload",e=>{if(saveTimer||!storageOK){e.preventDefault();e.returnValue="";}});
-window.addEventListener("pagehide",()=>{$("token").value="";});
+$("newProject").onclick = () => addProject(false);
+$("newBook").onclick = () => addProject(true);
+
+$("addChapter").onclick = () => {
+  if (busy) return;
+
+  const title = prompt("Chapter title:", "New Chapter");
+  if (!title?.trim()) return;
+
+  mutate(() => {
+    const project = structuredClone(current());
+    const main = project.files.find(f => f.path === "main.tex");
+
+    if (!/\\documentclass(?:\[[^\]]*\])?\{(?:book|report)\}/.test(main.text)) {
+      throw Error("Open a book or report project before adding a chapter.");
+    }
+
+    let number = 1;
+    let path;
+
+    do {
+      path = `chapters/chapter${number++}.tex`;
+    } while (
+      [...project.files, ...project.deletedFiles].some(
+        f => f.path.toLowerCase() === path.toLowerCase()
+      )
+    );
+
+    const safeTitle = title.trim().replace(
+      /[\\{}$&#%_^~]/g,
+      character => ({
+        "\\": "\\textbackslash{}",
+        "{": "\\{",
+        "}": "\\}",
+        "$": "\\$",
+        "&": "\\&",
+        "#": "\\#",
+        "%": "\\%",
+        "_": "\\_",
+        "^": "\\textasciicircum{}",
+        "~": "\\textasciitilde{}"
+      })[character]
+    );
+
+    const include = `\\include{${path.slice(0, -4)}}`;
+    const marker = /^[ \t]*\\backmatter\b/m.test(main.text)
+      ? /^[ \t]*\\backmatter\b/m
+      : /^[ \t]*\\end\{document\}/m;
+
+    if (!marker.test(main.text)) {
+      throw Error("main.tex needs an \\end{document} line.");
+    }
+
+    main.text = main.text.replace(
+      marker,
+      match => `${include}\n\n${match}`
+    );
+
+    project.files.push(textFile(
+      path,
+      `\\chapter{${safeTitle}}\n\nWrite your chapter here.\n`
+    ));
+
+    validateProject(project);
+    current().files = project.files;
+    activePath = path;
+  }, "Chapter added. Write your text, then click Compile.");
+};
+
+$("renameProject").onclick = () => {
+  const name = prompt("Project name:", current().name);
+  if (name?.trim()) {
+    mutate(() => current().name = name.trim(), "Project renamed.");
+  }
+};
+
+$("deleteProject").onclick = () => {
+  if (busy) return;
+  if (confirm("Move this project to deleted projects?")) {
+    mutate(() => {
+      const old = current();
+      state.trash.push(old);
+      state.projects = state.projects.filter(p => p.id !== old.id);
+
+      if (!state.projects.length) {
+        state.projects.push(newProject("Untitled project"));
+      }
+
+      state.activeId = state.projects[0].id;
+      activePath = "main.tex";
+    }, "Project moved to deleted projects.");
+  }
+};
+
+$("restoreProject").onclick = () => mutate(() => {
+  if (!state.trash.length) return;
+  const p = state.trash.pop();
+  state.projects.push(p);
+  state.activeId = p.id;
+  activePath = "main.tex";
+}, "Project restored.");
+
+$("newFile").onclick = () => {
+  if (busy) return;
+
+  const path = prompt(
+    "Text file path (for example chapters/chapter3.tex):",
+    "chapters/chapter3.tex"
+  );
+
+  if (!path) return;
+
+  mutate(() => {
+    validPath(path);
+
+    if (!textExt.has(ext(path))) {
+      throw Error("Create a text file here; use Upload files for images.");
+    }
+
+    const p = structuredClone(current());
+    p.files.push(textFile(path, ""));
+    validateProject(p);
+    current().files = p.files;
+    activePath = path;
+  }, "File created. Reference it from main.tex to include it in compilation.");
+};
+
+$("renameFile").onclick = () => {
+  if (busy || activePath === "main.tex") return;
+
+  const path = prompt("New file path:", activePath);
+  if (!path) return;
+
+  mutate(() => {
+    validPath(path);
+
+    if (ext(path) !== ext(activePath)) {
+      throw Error("Keep the same file extension.");
+    }
+
+    const p = structuredClone(current());
+    p.files.find(f => f.path === activePath).path = path;
+    validateProject(p);
+    current().files = p.files;
+    activePath = path;
+  }, "File renamed. Update any LaTeX references to its old path.");
+};
+
+$("deleteFile").onclick = () => {
+  if (busy || activePath === "main.tex") return;
+  if (!confirm("Delete " + activePath + "? You can restore it.")) return;
+
+  mutate(() => {
+    const p = current();
+    p.deletedFiles.push(selected());
+    p.files = p.files.filter(f => f.path !== activePath);
+    activePath = "main.tex";
+  }, "File deleted. Update references or restore it before compiling.");
+};
+
+$("restoreFile").onclick = () => mutate(() => {
+  const p = current();
+  const f = p.deletedFiles.at(-1);
+  if (!f) return;
+
+  const next = structuredClone(p);
+
+  if (next.files.some(
+    g => g.path.toLowerCase() === f.path.toLowerCase()
+  )) {
+    throw Error(
+      "Rename the existing file at " + f.path +
+      " before restoring this version."
+    );
+  }
+
+  next.files.push(f);
+  next.deletedFiles.pop();
+  validateProject(next);
+  p.files = next.files;
+  p.deletedFiles = next.deletedFiles;
+  activePath = f.path;
+}, "File restored.");
+
+$("importButton").onclick = () => $("fileInput").click();
+$("folderButton").onclick = () => $("folderInput").click();
+
+$("fileInput").onchange = async e => {
+  await upload(e.target.files, false);
+  e.target.value = "";
+};
+
+$("folderInput").onchange = async e => {
+  await upload(e.target.files, true);
+  e.target.value = "";
+};
+
+$("backupProjects").onclick = () => {
+  capture();
+  download(
+    new Blob([JSON.stringify(state)], { type: "application/json" }),
+    "ieop-projects-backup.json"
+  );
+};
+
+$("importProjects").onclick = () => $("backupInput").click();
+
+$("backupInput").onchange = async e => {
+  if (busy) return;
+
+  const file = e.target.files[0];
+  if (!file) return;
+
+  busy = true;
+  capture();
+  controls();
+
+  try {
+    if (file.size > 100 * MB) {
+      throw Error("Backup exceeds 100 MB.");
+    }
+
+    const data = normalize(JSON.parse(await file.text()));
+
+    for (const p of data.projects) {
+      p.id = uid();
+      p.name += " (imported)";
+      state.projects.push(p);
+    }
+
+    for (const p of data.trash) {
+      p.id = uid();
+      state.trash.push(p);
+    }
+
+    const ok = await persist();
+
+    msg(
+      ok
+        ? "Backup imported; existing projects kept."
+        : "Backup imported in memory only. Saving unavailable.",
+      !ok
+    );
+  } catch (err) {
+    msg(err.message, true);
+  } finally {
+    busy = false;
+    e.target.value = "";
+    controls();
+  }
+};
+
+if (channel) {
+  channel.onmessage = e => {
+    if (e.data.sessionId !== sessionId) {
+      blocked = true;
+      storageOK = false;
+      msg(
+        "Projects changed in another tab. Back up this tab, then reload. Saving is paused.",
+        true
+      );
+    }
+  };
+}
+
+window.addEventListener("beforeunload", e => {
+  if (saveTimer || !storageOK) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
+window.addEventListener("pagehide", () => {
+  $("token").value = "";
+});
 
 // Highlight display only: the textarea remains the source of truth for editing and saving.
 function escapeCode(text){return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
