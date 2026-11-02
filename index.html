@@ -324,6 +324,43 @@
       caret-color: CanvasText;
     }
   }
+ /* Resizable editor and PDF panels */
+@media (min-width: 1101px) {
+  main {
+    grid-template-columns:
+      minmax(0, var(--editor-share, 1fr))
+      10px
+      minmax(0, var(--preview-share, 1fr));
+  }
+
+  #panelDivider {
+    background: #cad5e2;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+  }
+
+  #panelDivider:hover,
+  #panelDivider:focus-visible {
+    background: #79a9dc;
+  }
+
+  body.resizing-panels,
+  body.resizing-panels * {
+    cursor: col-resize !important;
+    user-select: none !important;
+  }
+
+  body.resizing-panels #pdfViewer {
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  #panelDivider {
+    display: none;
+  }
+}
 </style>
 </head>
 
@@ -450,7 +487,17 @@
         <pre id="compileErrorText"></pre>
       </details>
     </section>
-
+      <div
+  id="panelDivider"
+  role="separator"
+  aria-label="Resize editor and PDF panels"
+  aria-orientation="vertical"
+  aria-valuemin="25"
+  aria-valuemax="75"
+  aria-valuenow="50"
+  tabindex="0"
+  title="Drag to resize the panels"
+></div>
     <section class="panel preview-panel" aria-label="PDF preview">
       <h2 id="previewTitle" class="panel-title">PDF preview</h2>
 
@@ -2241,6 +2288,121 @@ function refreshBookOutline() {
 $("refreshOutline").onclick = () => {
   if (!busy) refreshBookOutline();
 };
+ const panelDivider = $("panelDivider");
+const panelLayout = document.querySelector("main");
+const desktopPanels = window.matchMedia("(min-width: 1101px)");
+
+let editorShare = 50;
+let resizingPointer = null;
+
+function setPanelShare(value) {
+  editorShare = Math.max(25, Math.min(75, value));
+
+  panelLayout.style.setProperty(
+    "--editor-share",
+    editorShare + "fr"
+  );
+
+  panelLayout.style.setProperty(
+    "--preview-share",
+    (100 - editorShare) + "fr"
+  );
+
+  panelDivider.setAttribute(
+    "aria-valuenow",
+    String(Math.round(editorShare))
+  );
+}
+
+function movePanelDivider(event) {
+  if (!desktopPanels.matches) return;
+
+  const bounds = panelLayout.getBoundingClientRect();
+  const dividerWidth = panelDivider.getBoundingClientRect().width;
+  const availableWidth = bounds.width - dividerWidth;
+
+  if (availableWidth <= 0) return;
+
+  setPanelShare(
+    ((event.clientX - bounds.left - dividerWidth / 2) /
+      availableWidth) * 100
+  );
+}
+
+function stopPanelResize() {
+  const pointerId = resizingPointer;
+  resizingPointer = null;
+
+  document.body.classList.remove("resizing-panels");
+
+  if (
+    pointerId !== null &&
+    panelDivider.hasPointerCapture(pointerId)
+  ) {
+    panelDivider.releasePointerCapture(pointerId);
+  }
+}
+
+panelDivider.addEventListener("pointerdown", event => {
+  if (
+    !desktopPanels.matches ||
+    !event.isPrimary ||
+    event.button !== 0
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+
+  resizingPointer = event.pointerId;
+  panelDivider.setPointerCapture(event.pointerId);
+  panelDivider.focus();
+
+  document.body.classList.add("resizing-panels");
+  movePanelDivider(event);
+});
+
+panelDivider.addEventListener("pointermove", event => {
+  if (event.pointerId === resizingPointer) {
+    movePanelDivider(event);
+  }
+});
+
+panelDivider.addEventListener("pointerup", stopPanelResize);
+panelDivider.addEventListener("pointercancel", stopPanelResize);
+panelDivider.addEventListener("lostpointercapture", stopPanelResize);
+
+window.addEventListener("blur", stopPanelResize);
+
+desktopPanels.addEventListener("change", () => {
+  stopPanelResize();
+});
+
+panelDivider.addEventListener("keydown", event => {
+  if (!desktopPanels.matches) return;
+
+  const step = event.shiftKey ? 10 : 2;
+
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    setPanelShare(editorShare - step);
+  } else if (event.key === "ArrowRight") {
+    event.preventDefault();
+    setPanelShare(editorShare + step);
+  } else if (event.key === "Home") {
+    event.preventDefault();
+    setPanelShare(25);
+  } else if (event.key === "End") {
+    event.preventDefault();
+    setPanelShare(75);
+  }
+});
+
+panelDivider.addEventListener("dblclick", () => {
+  setPanelShare(50);
+});
+
+setPanelShare(50);
 init();
 </script>
 </body>
