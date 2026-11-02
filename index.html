@@ -274,6 +274,18 @@
     }
   }
 .files-heading{margin-top:25px!important;border-top:1px solid #cad5e2;padding-top:18px}#fileList{display:flex;flex-direction:column;gap:5px;max-height:400px;overflow:auto}.file-item{text-align:left;font-size:12px;padding:8px;overflow-wrap:anywhere}.file-item.selected{background:#dceee5;border-color:#176b52}#assetView{padding:25px;min-height:420px}#assetImage{max-width:100%;max-height:55vh;object-fit:contain}.projects-sidebar{max-height:1100px;overflow:auto}
+
+  .code-editor { position:relative; height:72vh; min-height:420px; background:#172334; overflow:hidden; }
+  .code-editor pre, .code-editor textarea { margin:0; font:14px/24px Consolas,"Liberation Mono",monospace; tab-size:2; letter-spacing:normal; }
+  #lineNumbers { position:absolute; inset:0 auto 0 0; width:56px; padding:22px 10px; overflow:hidden; text-align:right; color:#8193a9; background:#122033; user-select:none; border-right:1px solid #324257; }
+  #highlight { position:absolute; inset:0 0 0 56px; padding:22px; overflow:hidden; white-space:pre; pointer-events:none; color:#e2edf8; }
+  #editor { position:absolute; inset:0 0 0 56px; width:calc(100% - 56px); height:100%; min-height:0; margin:0; padding:22px; white-space:pre; overflow:auto; resize:none; background:transparent; color:transparent; caret-color:#fff; -webkit-text-fill-color:transparent; border:0; border-radius:0; }
+  #editor::selection { background:#42668c99; }
+  #editor:focus-visible { outline:2px solid #79a9dc; outline-offset:-2px; }
+  .tok-command { color:#83c5ff; } .tok-comment { color:#8bad8c; font-style:normal; }
+  .tok-brace { color:#e6b977; } .tok-math { color:#e3a5e8; } .tok-entry { color:#75d9c6; }
+  .editor-position { padding:6px 14px; background:#e4ebf3; color:#526579; font-size:12px; }
+  @media (forced-colors:active) { #highlight { visibility:hidden; } #editor { color:CanvasText; -webkit-text-fill-color:CanvasText; caret-color:CanvasText; } }
 </style>
 </head>
 
@@ -360,11 +372,12 @@
       <h2 id="fileTitle" class="panel-title">main.tex</h2>
 <div id="assetView" hidden><p id="assetInfo"></p><img id="assetImage" alt="Selected project image" hidden><button id="downloadAsset">Download selected file</button></div>
 
-      <textarea
-        id="editor"
-        aria-label="LaTeX source"
-        spellcheck="false"
-      ></textarea>
+      <div id="codeEditor" class="code-editor">
+        <pre id="lineNumbers" aria-hidden="true">1</pre>
+        <pre id="highlight" aria-hidden="true"></pre>
+        <textarea id="editor" aria-label="LaTeX source" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
+      </div>
+      <div id="editorPosition" class="editor-position">Line 1, column 1</div>
     </section>
 
     <section class="panel preview-panel" aria-label="PDF preview">
@@ -547,9 +560,9 @@ function controls(){
  renderList("projectList",state.projects,state.activeId,switchProject,"id");renderList("fileList",current().files,activePath,switchFile,"path");pdfState();
 }
 function showFile(){
- const f=selected();$("fileTitle").textContent=f.path;$("editor").hidden=f.kind!=="text";$("assetView").hidden=f.kind==="text";
+ const f=selected();$("fileTitle").textContent=f.path;$("editor").hidden=f.kind!=="text";$("codeEditor").hidden=f.kind!=="text";$("editorPosition").hidden=f.kind!=="text";$("assetView").hidden=f.kind==="text";
  if(assetURL)URL.revokeObjectURL(assetURL);assetURL=null;$("assetImage").hidden=true;$("assetImage").removeAttribute("src");
- if(f.kind==="text")$("editor").value=f.text;
+ if(f.kind==="text"){$("editor").value=f.text;$("editor").scrollTop=0;$("editor").scrollLeft=0;renderEditor();}
  else {$("assetInfo").textContent=f.path+" · "+(bytes(f).length/1024).toFixed(1)+" KB";if(["png","jpg","jpeg"].includes(ext(f.path))){assetURL=URL.createObjectURL(new Blob([bytes(f)]));$("assetImage").src=assetURL;$("assetImage").hidden=false;}}
  controls();
 }
@@ -604,7 +617,7 @@ async function upload(fileList,isFolder){
  validateProject(next);p.files=next.files;p.deletedFiles=next.deletedFiles;if(!selected())activePath="main.tex";clearPDF();showFile();const ok=await persist();msg(ok?"Files uploaded. Compile main.tex to include referenced files.":"Files loaded in memory only. Download a project ZIP or backup now.",!ok);
  }catch(e){msg("Upload failed: "+e.message,true);}finally{busy=false;controls();}
 }
-$("editor").oninput=()=>{capture();scheduleSave();pdfState();msg(storageOK&&!blocked?"Changes pending save…":"Saving unavailable. Back up before leaving.",!storageOK||blocked);};
+$("editor").oninput=()=>{renderEditor();capture();scheduleSave();pdfState();msg(storageOK&&!blocked?"Changes pending save…":"Saving unavailable. Back up before leaving.",!storageOK||blocked);};
 $("projectName").oninput=()=>{capture();scheduleSave();};
 $("editor").onkeydown=e=>{if(busy)return;if(e.key==="Tab"){e.preventDefault();$("editor").setRangeText("  ",$("editor").selectionStart,$("editor").selectionEnd,"end");$("editor").oninput();}if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();compile();}};
 $("compileButton").onclick=compile;
@@ -631,6 +644,25 @@ $("backupInput").onchange=async e=>{if(busy)return;const file=e.target.files[0];
 channel&&(channel.onmessage=e=>{if(e.data.sessionId!==sessionId){blocked=true;storageOK=false;msg("Projects changed in another tab. Back up this tab, then reload. Saving is paused.",true);}});
 window.addEventListener("beforeunload",e=>{if(saveTimer||!storageOK){e.preventDefault();e.returnValue="";}});
 window.addEventListener("pagehide",()=>{$("token").value="";});
+
+// Highlight display only: the textarea remains the source of truth for editing and saving.
+function escapeCode(text){return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+function highlightSource(source){
+ const tokens=/(%[^\n]*|\\(?:[a-zA-Z@]+\*?|[^\n])|@[a-zA-Z]+|[{}\[\]]|\$\$?)/g;
+ let out="",last=0;
+ for(const match of source.matchAll(tokens)){
+  out+=escapeCode(source.slice(last,match.index));const token=match[0];
+  const cls=token[0]==="%"?"comment":token[0]==="\\"?"command":token[0]==="@"?"entry":token[0]==="$"?"math":"brace";
+  out+='<span class="tok-'+cls+'">'+escapeCode(token)+'</span>';last=match.index+token.length;
+ }
+ return out+escapeCode(source.slice(last))+"\n";
+}
+function syncEditorScroll(){const e=$("editor");$("highlight").scrollTop=e.scrollTop;$("highlight").scrollLeft=e.scrollLeft;$("lineNumbers").scrollTop=e.scrollTop;}
+function updatePosition(){const e=$("editor"),before=e.value.slice(0,e.selectionStart),lines=before.split("\n");$("editorPosition").textContent="Line "+lines.length+", column "+(lines.at(-1).length+1);}
+function renderEditor(){const source=$("editor").value;$("highlight").innerHTML=highlightSource(source);$("lineNumbers").textContent=Array.from({length:source.split("\n").length},(_,i)=>i+1).join("\n")+"\n";syncEditorScroll();updatePosition();}
+$("editor").addEventListener("scroll",syncEditorScroll);
+for(const event of ["click","keyup","select","input"])$("editor").addEventListener(event,updatePosition);
+
 async function init(){
  // Disable controls until stored projects have loaded.
  document.querySelectorAll("button,input,textarea").forEach(x=>x.disabled=true);
