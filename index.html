@@ -377,6 +377,9 @@
   <button id="zipButton">Download project ZIP</button>
   <button id="sourceButton">Download selected file</button>
   <button id="compileButton" class="primary">Compile</button>
+ <button id="compileChapterButton" type="button">
+  Compile current chapter
+</button>
   <button id="pdfButton" disabled>Download PDF</button>
   <a id="openPdf" class="button-link" target="_blank" rel="noopener" hidden>Open PDF</a>
 </div>
@@ -604,6 +607,7 @@ let storageOK = true;
 let pdfURL = null;
 let assetURL = null;
 let compiledSignature = null;
+ let compiledChapter = null;
 let saveTimer;
 let revision = 0;
 let saveQueue = Promise.resolve();
@@ -993,6 +997,11 @@ function renderList(id, items, selectedId, action, key) {
 }
 
 function controls() {
+ $("compileChapterButton").disabled =
+  busy ||
+  selected()?.kind !== "text" ||
+  ext(activePath) !== "tex" ||
+  activePath === "main.tex";
  $("refreshOutline").disabled = busy;
 refreshBookOutline();
   const ids = [
@@ -1202,8 +1211,7 @@ function makeZIP(files) {
     type: "application/zip"
   });
 }
-
-async function compile() {
+ async function compile(chapterOnly = false) {
   if (busy) return;
 
   clearErrors();
@@ -1226,7 +1234,74 @@ async function compile() {
       throw Error("main.tex is empty.");
     }
 
-    zip = makeZIP(current().files);
+ const filesToCompile = structuredClone(current().files);
+
+if (chapterOnly) {
+  if (
+    selected()?.kind !== "text" ||
+    ext(activePath) !== "tex" ||
+    activePath === "main.tex"
+  ) {
+    throw Error("Open a chapter .tex file first.");
+  }
+
+  const main = filesToCompile.find(file => file.path === "main.tex");
+  const chapterPath = activePath.slice(0, -4);
+
+  if (!/^[a-zA-Z0-9_./-]+$/.test(chapterPath)) {
+    throw Error("Chapter filenames must use letters, numbers, underscores, or hyphens.");
+  }
+
+  // Hide comments while preserving character positions.
+  const visibleSource = main.text.split("\n").map(line => {
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] !== "%") continue;
+
+      let backslashes = 0;
+
+      for (let j = i - 1; j >= 0 && line[j] === "\\"; j--) {
+        backslashes++;
+      }
+
+      if (backslashes % 2 === 0) {
+        return line.slice(0, i) + " ".repeat(line.length - i);
+      }
+    }
+
+    return line;
+  }).join("\n");
+
+  const includedChapters = Array.from(
+    visibleSource.matchAll(/\\include\s*\{([^}]+)\}/g),
+    match => match[1].trim().replace(/^\.\//, "").replace(/\.tex$/, "")
+  );
+
+  if (!includedChapters.includes(chapterPath)) {
+    throw Error(
+      "This file must be included directly in main.tex using " +
+      "\\include{" + chapterPath + "}."
+    );
+  }
+
+  if (/\\includeonly\b/.test(visibleSource)) {
+    throw Error(
+      "main.tex already contains \\includeonly. Remove it before using this button."
+    );
+  }
+
+  const documentStart = visibleSource.search(/\\begin\s*\{document\}/);
+
+  if (documentStart < 0) {
+    throw Error("main.tex needs \\begin{document}.");
+  }
+
+  main.text =
+    main.text.slice(0, documentStart) +
+    "\\includeonly{" + chapterPath + "}\n" +
+    main.text.slice(documentStart);
+}
+
+zip = makeZIP(filesToCompile);
 
     if (zip.size > 14 * MB) {
       throw Error("Project ZIP exceeds 14 MB. Reduce image sizes before compiling.");
@@ -1302,6 +1377,7 @@ async function compile() {
     clearPDF();
     pdfURL = URL.createObjectURL(blob);
     compiledSignature = snapshot;
+   compiledChapter = chapterOnly ? activePath : null;
 
     $("pdfViewer").src = pdfURL;
     $("pdfViewer").hidden = false;
@@ -1665,7 +1741,22 @@ $("editor").oninput = () => {
   renderEditor();
   capture();
   scheduleSave();
-  pdfState();
+  function pdfState() {
+  const fresh = pdfURL && compiledSignature === signature();
+
+  $("pdfButton").disabled = !fresh || busy;
+  $("openPdf").hidden = !fresh;
+
+  let title = compiledChapter
+    ? "Chapter PDF — " + compiledChapter
+    : "PDF preview";
+
+  if (pdfURL && !fresh) {
+    title += " — changes need compilation";
+  }
+
+  $("previewTitle").textContent = title;
+}
 
   msg(
     storageOK && !blocked
@@ -1702,7 +1793,8 @@ $("editor").onkeydown = event => {
   }
 };
 
-$("compileButton").onclick = compile;
+ $("compileButton").onclick = () => compile(false);
+$("compileChapterButton").onclick = () => compile(true);
 
 $("clearToken").onclick = () => {
   $("token").value = "";
