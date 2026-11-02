@@ -6,9 +6,7 @@
 <title>IEOP LaTeX Studio</title>
 
 <style>
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
   body {
     margin: 0;
@@ -23,18 +21,10 @@
     color: white;
   }
 
-  header h1 {
-    margin: 0;
-    font-size: 24px;
-  }
+  header h1 { margin: 0; font-size: 24px; }
+  header p { margin: 8px 0 0; color: #c4d5e5; }
 
-  header p {
-    margin: 8px 0 0;
-    color: #c4d5e5;
-  }
-
-  .toolbar,
-  .connection {
+  .toolbar, .connection {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -52,17 +42,10 @@
     font-size: 15px;
   }
 
-  #projectName {
-    flex: 1;
-  }
+  #projectName { flex: 1; }
+  #token { width: 290px; max-width: 100%; }
 
-  #token {
-    width: 290px;
-    max-width: 100%;
-  }
-
-  button,
-  .button-link {
+  button, .button-link {
     padding: 11px 16px;
     border: 1px solid #cad5e2;
     border-radius: 6px;
@@ -73,15 +56,8 @@
     text-decoration: none;
   }
 
-  button:hover,
-  .button-link:hover {
-    background: #edf3f9;
-  }
-
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  button:hover, .button-link:hover { background: #edf3f9; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .primary {
     background: #176b52;
@@ -89,9 +65,7 @@
     color: white;
   }
 
-  .primary:hover {
-    background: #10533f;
-  }
+  .primary:hover { background: #10533f; }
 
   :focus-visible {
     outline: 3px solid #79a9dc;
@@ -121,12 +95,11 @@
     padding: 18px 12px;
     background: #f8fafc;
     border-right: 1px solid #cad5e2;
+    max-height: 1100px;
+    overflow: auto;
   }
 
-  .projects-sidebar h2 {
-    margin: 0 0 15px;
-    font-size: 16px;
-  }
+  .projects-sidebar h2 { margin: 0 0 15px; font-size: 16px; }
 
   .project-tools {
     display: flex;
@@ -135,12 +108,9 @@
     margin-bottom: 16px;
   }
 
-  .project-tools button {
-    padding: 8px;
-    font-size: 12px;
-  }
+  .project-tools button { padding: 8px; font-size: 12px; }
 
-  #projectList {
+  #projectList, #fileList {
     display: flex;
     flex-direction: column;
     gap: 7px;
@@ -159,15 +129,33 @@
     font-weight: bold;
   }
 
+  .files-heading {
+    margin-top: 25px !important;
+    border-top: 1px solid #cad5e2;
+    padding-top: 18px;
+  }
+
+  #fileList { gap: 5px; max-height: 400px; overflow: auto; }
+
+  .file-item {
+    text-align: left;
+    font-size: 12px;
+    padding: 8px;
+    overflow-wrap: anywhere;
+  }
+
+  .file-item.selected {
+    background: #dceee5;
+    border-color: #176b52;
+  }
+
   main {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     min-width: 0;
   }
 
-  .panel {
-    min-width: 0;
-  }
+  .panel { min-width: 0; }
 
   .panel-title {
     margin: 0;
@@ -176,23 +164,7 @@
     font-size: 14px;
   }
 
-  textarea {
-    display: block;
-    width: 100%;
-    height: 72vh;
-    min-height: 420px;
-    padding: 22px;
-    border: none;
-    resize: vertical;
-    background: #172334;
-    color: #e2edf8;
-    font: 14px/1.7 Consolas, monospace;
-    tab-size: 2;
-  }
-
-  .preview-panel {
-    border-left: 1px solid #ccd7e3;
-  }
+  .preview-panel { border-left: 1px solid #ccd7e3; }
 
   #pdfViewer {
     display: block;
@@ -210,6 +182,109 @@
     line-height: 1.8;
   }
 
+  #assetView { padding: 25px; min-height: 420px; }
+  #assetImage { max-width: 100%; max-height: 55vh; object-fit: contain; }
+
+  .code-editor {
+    position: relative;
+    height: 72vh;
+    min-height: 420px;
+    background: #172334;
+    overflow: hidden;
+  }
+
+  .code-editor pre, .code-editor textarea {
+    margin: 0;
+    font: 14px/24px Consolas, "Liberation Mono", monospace;
+    tab-size: 2;
+    letter-spacing: normal;
+  }
+
+  #lineNumbers {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 56px;
+    padding: 22px 10px;
+    overflow: hidden;
+    text-align: right;
+    color: #8193a9;
+    background: #122033;
+    user-select: none;
+    border-right: 1px solid #324257;
+  }
+
+  #highlight {
+    position: absolute;
+    inset: 0 0 0 56px;
+    padding: 22px;
+    overflow: hidden;
+    white-space: pre;
+    pointer-events: none;
+    color: #e2edf8;
+  }
+
+  #editor {
+    position: absolute;
+    inset: 0 0 0 56px;
+    display: block;
+    width: calc(100% - 56px);
+    height: 100%;
+    min-height: 0;
+    padding: 22px;
+    white-space: pre;
+    overflow: auto;
+    resize: none;
+    background: transparent;
+    color: transparent;
+    caret-color: white;
+    -webkit-text-fill-color: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  #editor::selection { background: #42668c99; }
+  #editor:focus-visible { outline: 2px solid #79a9dc; outline-offset: -2px; }
+
+  .tok-command { color: #83c5ff; }
+  .tok-comment { color: #8bad8c; }
+  .tok-brace { color: #e6b977; }
+  .tok-math { color: #e3a5e8; }
+  .tok-entry { color: #75d9c6; }
+
+  .editor-position {
+    padding: 6px 14px;
+    background: #e4ebf3;
+    color: #526579;
+    font-size: 12px;
+  }
+
+  #searchTools { padding: 12px; gap: 8px; }
+  #searchTools input { width: 180px; max-width: 100%; }
+  #searchStatus { color: #526579; font-size: 12px; }
+
+  #compileErrors {
+    border-top: 1px solid #efc5c5;
+    background: #fff1f1;
+  }
+
+  #compileErrors summary {
+    padding: 12px;
+    color: #a32222;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  #compileErrorText {
+    margin: 0;
+    padding: 16px;
+    color: #8b2020;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 260px;
+    overflow: auto;
+    font: 13px/1.6 Consolas, monospace;
+  }
+
   footer {
     padding: 15px 24px;
     background: white;
@@ -217,141 +292,84 @@
     line-height: 1.7;
   }
 
-  #status {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-
-  #status.error {
-    color: #a32222;
-  }
-
-  #status.success {
-    color: #176b52;
-  }
-
-  [hidden] {
-    display: none !important;
-  }
+  #status { white-space: pre-wrap; overflow-wrap: anywhere; }
+  #status.error { color: #a32222; }
+  [hidden] { display: none !important; }
 
   @media (max-width: 1100px) {
-    .studio-layout {
-      grid-template-columns: 180px minmax(0, 1fr);
-    }
-
-    main {
-      grid-template-columns: 1fr;
-    }
-
-    .preview-panel {
-      border-left: none;
-    }
+    .studio-layout { grid-template-columns: 180px minmax(0, 1fr); }
+    main { grid-template-columns: 1fr; }
+    .preview-panel { border-left: none; }
   }
 
   @media (max-width: 650px) {
-    .studio-layout {
-      grid-template-columns: 1fr;
-    }
+    .studio-layout { grid-template-columns: 1fr; }
 
     .projects-sidebar {
       border-right: none;
       border-bottom: 1px solid #cad5e2;
     }
 
-    #projectList {
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
+    #projectList { flex-direction: row; flex-wrap: wrap; }
+    .project-item { width: auto; max-width: 100%; }
+    .toolbar, .connection { padding: 12px; }
+  }
 
-    .project-item {
-      width: auto;
-      max-width: 100%;
-    }
+  @media (forced-colors: active) {
+    #highlight { visibility: hidden; }
 
-    .toolbar,
-    .connection {
-      padding: 12px;
+    #editor {
+      color: CanvasText;
+      -webkit-text-fill-color: CanvasText;
+      caret-color: CanvasText;
     }
   }
-.files-heading{margin-top:25px!important;border-top:1px solid #cad5e2;padding-top:18px}#fileList{display:flex;flex-direction:column;gap:5px;max-height:400px;overflow:auto}.file-item{text-align:left;font-size:12px;padding:8px;overflow-wrap:anywhere}.file-item.selected{background:#dceee5;border-color:#176b52}#assetView{padding:25px;min-height:420px}#assetImage{max-width:100%;max-height:55vh;object-fit:contain}.projects-sidebar{max-height:1100px;overflow:auto}
-
-  .code-editor { position:relative; height:72vh; min-height:420px; background:#172334; overflow:hidden; }
-  .code-editor pre, .code-editor textarea { margin:0; font:14px/24px Consolas,"Liberation Mono",monospace; tab-size:2; letter-spacing:normal; }
-  #lineNumbers { position:absolute; inset:0 auto 0 0; width:56px; padding:22px 10px; overflow:hidden; text-align:right; color:#8193a9; background:#122033; user-select:none; border-right:1px solid #324257; }
-  #highlight { position:absolute; inset:0 0 0 56px; padding:22px; overflow:hidden; white-space:pre; pointer-events:none; color:#e2edf8; }
-  #editor { position:absolute; inset:0 0 0 56px; width:calc(100% - 56px); height:100%; min-height:0; margin:0; padding:22px; white-space:pre; overflow:auto; resize:none; background:transparent; color:transparent; caret-color:#fff; -webkit-text-fill-color:transparent; border:0; border-radius:0; }
-  #editor::selection { background:#42668c99; }
-  #editor:focus-visible { outline:2px solid #79a9dc; outline-offset:-2px; }
-  .tok-command { color:#83c5ff; } .tok-comment { color:#8bad8c; font-style:normal; }
-  .tok-brace { color:#e6b977; } .tok-math { color:#e3a5e8; } .tok-entry { color:#75d9c6; }
-  .editor-position { padding:6px 14px; background:#e4ebf3; color:#526579; font-size:12px; }
-  @media (forced-colors:active) { #highlight { visibility:hidden; } #editor { color:CanvasText; -webkit-text-fill-color:CanvasText; caret-color:CanvasText; } }
 </style>
 </head>
 
 <body>
-
 <header>
   <h1>IEOP LaTeX Studio</h1>
   <p>A workspace for scientific writing</p>
 </header>
 
 <div class="toolbar">
-  <input
-    id="projectName"
-    aria-label="Project name"
-    value="My first document"
-  >
-
+  <input id="projectName" aria-label="Project name" value="My first document">
   <button id="importButton">Upload files</button>
   <button id="folderButton">Upload folder</button>
   <button id="zipButton">Download project ZIP</button>
-  <button id="sourceButton">Download .tex</button>
-
-  <button id="compileButton" class="primary">
-    Compile
-  </button>
-
-  <button id="pdfButton" disabled>
-    Download PDF
-  </button>
-
-  <a
-    id="openPdf"
-    class="button-link"
-    target="_blank"
-    rel="noopener"
-    hidden
-  >Open PDF</a>
+  <button id="sourceButton">Download selected file</button>
+  <button id="compileButton" class="primary">Compile</button>
+  <button id="pdfButton" disabled>Download PDF</button>
+  <a id="openPdf" class="button-link" target="_blank" rel="noopener" hidden>Open PDF</a>
 </div>
 
 <div class="connection">
   <label for="token">Compiler access token:</label>
-
-  <input
-    id="token"
-    type="password"
-    placeholder="Enter your private token"
-    autocomplete="off"
-    spellcheck="false"
-  >
-
+  <input id="token" type="password" placeholder="Enter your private token"
+         autocomplete="off" spellcheck="false">
   <button id="clearToken">Clear token</button>
-
   <span class="hint">
-    The token is not saved by this application.
-    Enter it again after refreshing.
+    The token is not saved by this application. Enter it again after refreshing.
   </span>
 </div>
 
-<div class="notice">Compile sends all files in the active project to your Render compiler. Use <strong>main.tex</strong> as the entry document. Supports chapters, PNG/JPEG/PDF figures, and BibTeX. Projects save on this device; download backups regularly. Compilation is limited to 45 seconds of server processing. Public user accounts are not connected.</div>
-<div class="studio-layout">
+<div class="notice">
+  Compile sends all files in the active project to your Render compiler.
+  Use <strong>main.tex</strong> as the entry document.
+  Supports chapters, PNG/JPEG/PDF figures, and BibTeX.
+  Projects save on this device; download backups regularly.
+  Compilation is limited to 45 seconds of server processing.
+  Public user accounts are not connected.
+</div>
 
+<div class="studio-layout">
   <aside class="projects-sidebar" aria-label="Projects">
     <h2>My projects</h2>
 
     <div class="project-tools">
-      <button id="newProject">+ New project</button><button id="newBook">+ Book project</button>
+      <button id="newProject">+ New project</button>
+      <button id="newBook">+ Book project</button>
       <button id="renameProject">Rename</button>
       <button id="deleteProject">Delete</button>
       <button id="restoreProject">Restore last deleted</button>
@@ -362,106 +380,101 @@
     <nav id="projectList" aria-label="Choose a project"></nav>
 
     <h2 class="files-heading">Project files</h2>
+
     <div class="project-tools">
-  <button id="newFile">+ Text file</button>
-     <button id="addChapter">+ Add chapter</button>
-<button id="insertFigure" type="button">+ Insert figure</button>
-  <button id="renameFile">Rename file</button>
-  <button id="deleteFile">Delete file</button>
-  <button id="restoreFile">Restore file</button>
-</div>
+      <button id="newFile">+ Text file</button>
+      <button id="addChapter">+ Add chapter</button>
+      <button id="insertFigure">+ Insert figure</button>
+      <button id="renameFile">Rename file</button>
+      <button id="deleteFile">Delete file</button>
+      <button id="restoreFile">Restore file</button>
+    </div>
+
     <nav id="fileList" aria-label="Choose a file"></nav>
-    <p class="hint">New files can use paths such as chapters/chapter1.tex or images/figure.png. main.tex always stays at the project root.</p>
+
+    <p class="hint">
+      Files can use paths such as chapters/chapter1.tex or images/figure.png.
+      main.tex always stays at the project root.
+    </p>
   </aside>
 
   <main>
     <section class="panel" aria-label="Source editor">
       <h2 id="fileTitle" class="panel-title">main.tex</h2>
-     <div id="searchTools" class="toolbar">
-  <input
-    id="findText"
-    aria-label="Find text"
-    placeholder="Find in this file"
-    spellcheck="false"
-  >
-  <input
-    id="replaceText"
-    aria-label="Replacement text"
-    placeholder="Replace with"
-    spellcheck="false"
-  >
-  <button id="findNext" type="button">Find next</button>
-  <button id="replaceOne" type="button">Replace</button>
-  <button id="replaceAll" type="button">Replace all</button>
-  <span id="searchStatus" role="status" aria-live="polite"></span>
-</div>
-<div id="assetView" hidden><p id="assetInfo"></p><img id="assetImage" alt="Selected project image" hidden><button id="downloadAsset">Download selected file</button></div>
+
+      <div id="searchTools" class="toolbar">
+        <input id="findText" aria-label="Find text"
+               placeholder="Find in this file" spellcheck="false">
+        <input id="replaceText" aria-label="Replacement text"
+               placeholder="Replace with" spellcheck="false">
+        <button id="findNext">Find next</button>
+        <button id="replaceOne">Replace</button>
+        <button id="replaceAll">Replace all</button>
+        <span id="searchStatus" role="status" aria-live="polite"></span>
+      </div>
+
+      <div id="assetView" hidden>
+        <p id="assetInfo"></p>
+        <img id="assetImage" alt="Selected project image" hidden>
+        <button id="downloadAsset">Download selected file</button>
+      </div>
 
       <div id="codeEditor" class="code-editor">
         <pre id="lineNumbers" aria-hidden="true">1</pre>
         <pre id="highlight" aria-hidden="true"></pre>
-        <textarea id="editor" aria-label="LaTeX source" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
+        <textarea id="editor" aria-label="LaTeX source"
+                  spellcheck="false" wrap="off" autocapitalize="off"
+                  autocomplete="off" autocorrect="off"></textarea>
       </div>
+
       <div id="editorPosition" class="editor-position">Line 1, column 1</div>
+
+      <details id="compileErrors" hidden>
+        <summary>Compilation error details</summary>
+        <pre id="compileErrorText"></pre>
+      </details>
     </section>
 
     <section class="panel preview-panel" aria-label="PDF preview">
-      <h2 id="previewTitle" class="panel-title">
-        PDF preview
-      </h2>
+      <h2 id="previewTitle" class="panel-title">PDF preview</h2>
 
       <div id="emptyPreview">
-        <strong>Your compiled PDF will appear here.</strong>
-        <br>
+        <strong>Your compiled PDF will appear here.</strong><br>
         Enter your compiler token, then click Compile.
       </div>
 
-      <iframe
-        id="pdfViewer"
-        title="Compiled PDF preview"
-        hidden
-      ></iframe>
+      <iframe id="pdfViewer" title="Compiled PDF preview" hidden></iframe>
     </section>
   </main>
-
 </div>
 
 <footer>
-  <div id="status" role="status" aria-live="polite">
-    Workspace ready.
-  </div>
-
+  <div id="status" role="status" aria-live="polite">Workspace ready.</div>
   <div class="hint">
-    Projects save in this browser only.
-    Accounts and cloud project storage are not connected yet.
-    Use Back up projects regularly.
+    Projects save in this browser only. Accounts and cloud project storage
+    are not connected yet. Use Back up projects regularly.
   </div>
 </footer>
 
-<input
-  id="fileInput"
-  type="file"
-  accept=".tex,.bib,.bst,.sty,.cls,.png,.jpg,.jpeg,.pdf" multiple
-  hidden
->
-
-<input
-  id="backupInput"
-  type="file"
-  accept=".json,application/json"
-  hidden
->
-
+<input id="fileInput" type="file"
+       accept=".tex,.bib,.bst,.sty,.cls,.png,.jpg,.jpeg,.pdf" multiple hidden>
+<input id="backupInput" type="file" accept=".json,application/json" hidden>
 <input id="folderInput" type="file" webkitdirectory multiple hidden>
+
 <script>
 "use strict";
-const $=id=>document.getElementById(id);
-const API="https://ieop-latex-compiler.onrender.com";
-const MB=1024*1024, MAX_FILE=10*MB, MAX_TOTAL=25*MB, MAX_COUNT=200;
-const textExt=new Set(["tex","bib","bst","sty","cls"]);
-const extensions=new Set([...textExt,"png","jpg","jpeg","pdf"]);
-const enc=new TextEncoder();
-const article=String.raw`\documentclass[12pt]{article}
+
+const $ = id => document.getElementById(id);
+const API = "https://ieop-latex-compiler.onrender.com";
+const MB = 1024 * 1024;
+const MAX_FILE = 10 * MB;
+const MAX_TOTAL = 25 * MB;
+const MAX_COUNT = 200;
+const textExt = new Set(["tex", "bib", "bst", "sty", "cls"]);
+const extensions = new Set([...textExt, "png", "jpg", "jpeg", "pdf"]);
+const enc = new TextEncoder();
+
+const article = String.raw`\documentclass[12pt]{article}
 \usepackage{amsmath,graphicx}
 \usepackage[margin=1in]{geometry}
 \title{My IEOP Document}
@@ -470,42 +483,48 @@ const article=String.raw`\documentclass[12pt]{article}
 \maketitle
 \section{Introduction}
 Welcome to IEOP LaTeX Studio.
+
 \[ c=\lambda f \]
+
 \end{document}`;
-const bookMain=String.raw`\documentclass[12pt,oneside]{book}
+
+const bookMain = String.raw`\documentclass[12pt,oneside]{book}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{amsmath,graphicx}
 \usepackage[margin=1in]{geometry}
 \usepackage[hidelinks]{hyperref}
+
 \title{My Book}
 \author{Your Name}
 \date{\today}
+
 \begin{document}
 \frontmatter
 \maketitle
 \tableofcontents
+
 \mainmatter
 \include{chapters/chapter1}
 \include{chapters/chapter2}
+
 \backmatter
 \bibliographystyle{plain}
 \bibliography{references}
 \end{document}`;
-const chapter1=String.raw`\chapter{Introduction}
+
+const chapter1 = String.raw`\chapter{Introduction}
 This is the first chapter. A sample reference is \cite{maxwell1865}.
+
 \section{An equation}
 \begin{equation}
 c=\lambda f
 \end{equation}
-% Upload an image first, then uncomment this example:
-% \begin{figure}[htbp]
-% \centering
-% \includegraphics[width=0.7\textwidth]{images/figure.png}
-% \caption{Describe your figure.}
-% \label{fig:example}
-% \end{figure}`;
-const refs=String.raw`@article{maxwell1865,
+
+% Upload an image, then use Insert figure to include it.
+`;
+
+const refs = String.raw`@article{maxwell1865,
   author = {James Clerk Maxwell},
   title = {A Dynamical Theory of the Electromagnetic Field},
   journal = {Philosophical Transactions of the Royal Society of London},
@@ -513,150 +532,893 @@ const refs=String.raw`@article{maxwell1865,
   volume = {155},
   pages = {459--512}
 }`;
-let state,db,activePath="main.tex",busy=false,blocked=false,storageOK=true;
-let pdfURL=null,assetURL=null,compiledSignature=null,saveTimer,revision=0,saveQueue=Promise.resolve();
-const sessionId=crypto.randomUUID();
-const channel=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("ieop-books-state"):null;
-const uid=()=>crypto.randomUUID();
-const textFile=(path,text)=>({path,kind:"text",text});
-function newProject(name,source=article){return{id:uid(),name,files:[textFile("main.tex",source)],deletedFiles:[]};}
-function current(){return state.projects.find(p=>p.id===state.activeId);}
-function selected(){return current().files.find(f=>f.path===activePath);}
-function msg(text,error=false){$("status").textContent=text;$("status").className=error?"error":"";}
-function ext(path){return path.split(".").pop().toLowerCase();}
-function validPath(path){
- if(typeof path!=="string"||!path||path.length>240||/[\\:\x00-\x1f]/.test(path)||path.startsWith("/"))throw Error("Invalid file path.");
- if(path.split("/").some(x=>!x||x===".."||x.startsWith(".")||x==="__MACOSX"))throw Error("Hidden files and unsafe paths are not allowed.");
- if(!extensions.has(ext(path)))throw Error("Unsupported file type: "+path);
- if(path.toLowerCase()==="main.pdf")throw Error("main.pdf is reserved. Put PDF figures in an images folder.");
- return path;
+
+let state, db;
+let activePath = "main.tex";
+let busy = false;
+let blocked = false;
+let storageOK = true;
+let pdfURL = null;
+let assetURL = null;
+let compiledSignature = null;
+let saveTimer;
+let revision = 0;
+let saveQueue = Promise.resolve();
+
+const sessionId = crypto.randomUUID();
+const channel = typeof BroadcastChannel !== "undefined"
+  ? new BroadcastChannel("ieop-books-state")
+  : null;
+
+const uid = () => crypto.randomUUID();
+const textFile = (path, text) => ({ path, kind: "text", text });
+
+function newProject(name, source = article) {
+  return {
+    id: uid(),
+    name,
+    files: [textFile("main.tex", source)],
+    deletedFiles: []
+  };
 }
-function bytes(f){
- if(f.kind==="text")return enc.encode(f.text);
- const binary=atob(f.base64),out=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)out[i]=binary.charCodeAt(i);return out;
+
+function current() {
+  return state.projects.find(project => project.id === state.activeId);
 }
-function validateProject(p){
- if(!p||typeof p.id!=="string"||typeof p.name!=="string"||!Array.isArray(p.files)||!p.files.length)throw Error("Invalid project.");
- if(!Array.isArray(p.deletedFiles))p.deletedFiles=[];
- const names=new Set();let total=0;
- for(const f of p.files){validPath(f.path);const name=f.path.toLowerCase();if(names.has(name))throw Error("Duplicate file: "+f.path);names.add(name);
- if(f.kind==="text"?typeof f.text!=="string"||!textExt.has(ext(f.path)):f.kind!=="binary"||typeof f.base64!=="string"||textExt.has(ext(f.path)))throw Error("Invalid file content.");
- const size=bytes(f).length;if(size>MAX_FILE)throw Error("A file exceeds 10 MB.");total+=size;
- }
- if(p.files.length>MAX_COUNT||total>MAX_TOTAL)throw Error("Project exceeds 200 files or 25 MB.");
- if(!p.files.some(f=>f.path==="main.tex"&&f.kind==="text"))throw Error("Each project needs a text file named main.tex at the root.");
- for(const f of p.files){if(p.files.some(g=>g!==f&&g.path.toLowerCase().startsWith(f.path.toLowerCase()+"/")))throw Error("A file path is also used as a folder.");}
- for(const f of p.deletedFiles){validPath(f.path);if(f.kind==="text"?typeof f.text!=="string":f.kind!=="binary"||typeof f.base64!=="string")throw Error("Invalid deleted file.");if(bytes(f).length>MAX_FILE)throw Error("Deleted file exceeds 10 MB.");}
- return p;
+
+function selected() {
+  return current().files.find(file => file.path === activePath);
 }
-function normalize(raw){
- if(!raw||!Array.isArray(raw.projects)||!raw.projects.length||!Array.isArray(raw.trash))throw Error("Invalid backup.");
- const s=structuredClone(raw),ids=new Set();
- for(const p of [...s.projects,...s.trash]){
- if(!p.files&&typeof p.source==="string"){p.files=[textFile("main.tex",p.source)];p.deletedFiles=[];delete p.source;}
- validateProject(p);if(ids.has(p.id))throw Error("Duplicate project ID.");ids.add(p.id);
- }
- if(!s.projects.some(p=>p.id===s.activeId))s.activeId=s.projects[0].id;s.version=2;return s;
+
+function msg(text, error = false) {
+  $("status").textContent = text;
+  $("status").className = error ? "error" : "";
 }
-function requestPromise(request){return new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
-async function openDB(){return await new Promise((resolve,reject)=>{const r=indexedDB.open("ieop-latex-books",1);r.onupgradeneeded=()=>r.result.createObjectStore("workspace");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.onblocked=()=>reject(Error("Close other editor tabs and reload."));});}
-async function readDB(){return requestPromise(db.transaction("workspace","readonly").objectStore("workspace").get("state"));}
-function capture(){if(!state)return;current().name=$("projectName").value;const f=selected();if(f?.kind==="text")f.text=$("editor").value;}
-function persist(){
- clearTimeout(saveTimer);saveTimer=null;if(!state)return Promise.resolve(false);capture();const snapshot=structuredClone(state);
- saveQueue=saveQueue.then(()=>new Promise(resolve=>{
- if(!db||blocked){storageOK=false;resolve(false);return;}
- const tx=db.transaction("workspace","readwrite"),store=tx.objectStore("workspace");let conflict=false;
- const r=store.get("state");r.onsuccess=()=>{const stored=r.result;if((stored?.revision||0)!==revision){conflict=true;tx.abort();return;}store.put({revision:revision+1,state:snapshot},"state");};
- tx.oncomplete=()=>{revision++;storageOK=true;channel?.postMessage({sessionId});resolve(true);};
- tx.onabort=tx.onerror=()=>{if(conflict)blocked=true;storageOK=false;msg(conflict?"Another tab changed your projects. Download a backup, then reload. Saving is paused.":"Browser saving failed. Download a backup before leaving.",true);resolve(false);};
- }));return saveQueue;
+
+function ext(path) {
+  return path.split(".").pop().toLowerCase();
 }
-function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{const ok=await persist();if(ok&&!busy)msg("Saved on this device.");},400);}
-function signature(){return JSON.stringify(current().files);}
-function pdfState(){const fresh=pdfURL&&compiledSignature===signature();$("pdfButton").disabled=!fresh||busy;$("openPdf").hidden=!fresh;$("previewTitle").textContent=pdfURL&&!fresh?"PDF preview — changes need compilation":"PDF preview";}
-function clearPDF(){if(pdfURL)URL.revokeObjectURL(pdfURL);pdfURL=null;compiledSignature=null;$("pdfViewer").removeAttribute("src");$("pdfViewer").hidden=true;$("emptyPreview").hidden=false;$("openPdf").removeAttribute("href");pdfState();}
-function renderList(id,items,selectedId,action,key){$(id).replaceChildren();for(const item of items){const b=document.createElement("button");b.textContent=key==="path"?item.path:(item.name.trim()||"Untitled project");b.className=(key==="path"?"file-item":"project-item")+(item[key]===selectedId?" selected":"");b.disabled=busy;if(item[key]===selectedId)b.setAttribute("aria-current","page");b.onclick=()=>action(item[key]);$(id).appendChild(b);}}
-function controls(){
- $("insertFigure").disabled = busy;
- $("replaceOne").disabled = busy;
-$("replaceAll").disabled = busy;
-  $("addChapter").disabled = busy;
- for(const id of ["newProject","newBook","renameProject","deleteProject","importProjects","importButton","folderButton","newFile","renameFile","deleteFile","zipButton","compileButton"] )$(id).disabled=busy;
- $("projectName").disabled=busy;$("editor").readOnly=busy;
- $("restoreProject").disabled=busy||!state.trash.length;$("restoreFile").disabled=busy||!current().deletedFiles.length;
- $("renameFile").disabled=busy||activePath==="main.tex";$("deleteFile").disabled=busy||activePath==="main.tex";
- renderList("projectList",state.projects,state.activeId,switchProject,"id");renderList("fileList",current().files,activePath,switchFile,"path");pdfState();
+
+function validPath(path) {
+  if (
+    typeof path !== "string" ||
+    !path ||
+    path.length > 240 ||
+    /[\\:\x00-\x1f]/.test(path) ||
+    path.startsWith("/")
+  ) {
+    throw Error("Invalid file path.");
+  }
+
+  if (path.split("/").some(
+    part => !part || part === ".." ||
+            part.startsWith(".") || part === "__MACOSX"
+  )) {
+    throw Error("Hidden files and unsafe paths are not allowed.");
+  }
+
+  if (!extensions.has(ext(path))) {
+    throw Error("Unsupported file type: " + path);
+  }
+
+  if (path.toLowerCase() === "main.pdf") {
+    throw Error("main.pdf is reserved. Put PDF figures in an images folder.");
+  }
+
+  return path;
 }
-function showFile(){
- const f=selected();$("fileTitle").textContent=f.path;$("editor").hidden=f.kind!=="text";$("codeEditor").hidden=f.kind!=="text";$("editorPosition").hidden=f.kind!=="text";$("assetView").hidden=f.kind==="text";
- if(assetURL)URL.revokeObjectURL(assetURL);assetURL=null;$("assetImage").hidden=true;$("assetImage").removeAttribute("src");
- if(f.kind==="text"){$("editor").value=f.text;$("editor").scrollTop=0;$("editor").scrollLeft=0;renderEditor();}
- else {$("assetInfo").textContent=f.path+" · "+(bytes(f).length/1024).toFixed(1)+" KB";if(["png","jpg","jpeg"].includes(ext(f.path))){assetURL=URL.createObjectURL(new Blob([bytes(f)]));$("assetImage").src=assetURL;$("assetImage").hidden=false;}}
- controls();
+
+function bytes(file) {
+  if (file.kind === "text") return enc.encode(file.text);
+
+  const binary = atob(file.base64);
+  const out = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i++) {
+    out[i] = binary.charCodeAt(i);
+  }
+
+  return out;
 }
-async function switchProject(id){if(busy||id===state.activeId)return;capture();state.activeId=id;activePath="main.tex";$("projectName").value=current().name;clearPDF();showFile();await persist();msg(storageOK?"Project opened. Compile to generate its PDF.":"Project opened in memory. Back up your projects.",!storageOK);}
-async function switchFile(path){if(busy)return;capture();activePath=path;showFile();await persist();}
-async function mutate(action,notice){if(busy)return;capture();try{action();clearPDF();$("projectName").value=current().name;if(!selected())activePath="main.tex";showFile();const ok=await persist();msg(ok?notice:"Changes are in memory only. Back up your projects.",!ok);}catch(e){msg(e.message,true);}}
-function filename(){return current().name.replace(/[^a-zA-Z0-9 _-]/g,"").trim()||"project";}
-function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);}
-// ZIP writer using uncompressed entries: no external scripts are required.
-function crc32(data){let crc=0xffffffff;for(const byte of data){crc^=byte;for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}return(crc^0xffffffff)>>>0;}
-function makeZIP(files){
- const chunks=[],central=[];let offset=0,centralSize=0;
- for(const f of files){const name=enc.encode(f.path),data=bytes(f),crc=crc32(data),head=new Uint8Array(30),h=new DataView(head.buffer);
- h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x800,true);h.setUint16(12,33,true);h.setUint32(14,crc,true);h.setUint32(18,data.length,true);h.setUint32(22,data.length,true);h.setUint16(26,name.length,true);
- chunks.push(head,name,data);
- const cd=new Uint8Array(46),d=new DataView(cd.buffer);d.setUint32(0,0x02014b50,true);d.setUint16(4,20,true);d.setUint16(6,20,true);d.setUint16(8,0x800,true);d.setUint16(14,33,true);d.setUint32(16,crc,true);d.setUint32(20,data.length,true);d.setUint32(24,data.length,true);d.setUint16(28,name.length,true);d.setUint32(42,offset,true);central.push(cd,name);centralSize+=46+name.length;offset+=30+name.length+data.length;
- }
- const end=new Uint8Array(22),e=new DataView(end.buffer);e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,centralSize,true);e.setUint32(16,offset,true);
- return new Blob([...chunks,...central,end],{type:"application/zip"});
+
+function validateProject(project) {
+  if (
+    !project ||
+    typeof project.id !== "string" ||
+    typeof project.name !== "string" ||
+    !Array.isArray(project.files) ||
+    !project.files.length
+  ) {
+    throw Error("Invalid project.");
+  }
+
+  if (!Array.isArray(project.deletedFiles)) project.deletedFiles = [];
+
+  const names = new Set();
+  let total = 0;
+
+  for (const file of project.files) {
+    validPath(file.path);
+
+    const name = file.path.toLowerCase();
+    if (names.has(name)) throw Error("Duplicate file: " + file.path);
+    names.add(name);
+
+    if (file.kind === "text") {
+      if (typeof file.text !== "string" || !textExt.has(ext(file.path))) {
+        throw Error("Invalid text file.");
+      }
+    } else if (
+      file.kind !== "binary" ||
+      typeof file.base64 !== "string" ||
+      textExt.has(ext(file.path))
+    ) {
+      throw Error("Invalid binary file.");
+    }
+
+    const size = bytes(file).length;
+    if (size > MAX_FILE) throw Error("A file exceeds 10 MB.");
+    total += size;
+  }
+
+  if (project.files.length > MAX_COUNT || total > MAX_TOTAL) {
+    throw Error("Project exceeds 200 files or 25 MB.");
+  }
+
+  if (!project.files.some(
+    file => file.path === "main.tex" && file.kind === "text"
+  )) {
+    throw Error("Each project needs a text file named main.tex at the root.");
+  }
+
+  for (const file of project.files) {
+    if (project.files.some(
+      other => other !== file &&
+        other.path.toLowerCase().startsWith(file.path.toLowerCase() + "/")
+    )) {
+      throw Error("A file path is also used as a folder.");
+    }
+  }
+
+  for (const file of project.deletedFiles) {
+    validPath(file.path);
+
+    if (file.kind === "text") {
+      if (typeof file.text !== "string" || !textExt.has(ext(file.path))) {
+        throw Error("Invalid deleted text file.");
+      }
+    } else if (
+      file.kind !== "binary" ||
+      typeof file.base64 !== "string" ||
+      textExt.has(ext(file.path))
+    ) {
+      throw Error("Invalid deleted file.");
+    }
+
+    if (bytes(file).length > MAX_FILE) {
+      throw Error("Deleted file exceeds 10 MB.");
+    }
+  }
+
+  return project;
 }
-async function compile(){
- if(busy)return;capture();const token=$("token").value.trim();if(!token){msg("Enter your compiler token first.",true);$("token").focus();return;}
- let zip;try{validateProject(current());if(!current().files.find(f=>f.path==="main.tex").text.trim())throw Error("main.tex is empty.");zip=makeZIP(current().files);if(zip.size>14*MB)throw Error("Project ZIP exceeds 14 MB. Reduce image sizes before compiling.");}catch(e){msg(e.message,true);return;}
- const snapshot=signature();busy=true;controls();$("compileButton").textContent="Compiling…";await persist();
- const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),150000);
- try{
- msg("Connecting to the compiler. An idle server may need a minute to wake up.");
- const health=await fetch(API+"/",{signal:controller.signal,credentials:"omit",cache:"no-store",redirect:"error"});if(!health.ok)throw Error("Compiler is not ready.");
- const capabilities=await health.json();if(!capabilities.supports?.includes("zip-project"))throw Error("Render is still running the old compiler. Deploy the updated app.py first.");
- const form=new FormData();form.append("project",zip,"project.zip");msg("Compiling all project files…");
- const r=await fetch(API+"/compile",{method:"POST",headers:{Authorization:"Bearer "+token},body:form,signal:controller.signal,credentials:"omit",redirect:"error"});
- if(!r.ok){let detail={};try{detail=await r.json();}catch{}throw Error(r.status===401?"Access denied. Check your token.":detail.error||"Compiler returned HTTP "+r.status);}
- if(!(r.headers.get("Content-Type")||"").includes("application/pdf"))throw Error("The server did not return a PDF.");
- const blob=await r.blob();if(!blob.size)throw Error("The PDF is empty.");clearPDF();pdfURL=URL.createObjectURL(blob);compiledSignature=snapshot;$("pdfViewer").src=pdfURL;$("pdfViewer").hidden=false;$("emptyPreview").hidden=true;$("openPdf").href=pdfURL;msg(storageOK?"PDF compiled. Download PDF or Open PDF to view it.":"PDF compiled. Browser saving failed; download a backup.",!storageOK);
- }catch(e){msg(e.name==="AbortError"?"Request timed out. Check Render, then try again.":e.message||"Could not reach the compiler.",true);}
- finally{clearTimeout(timer);busy=false;$("compileButton").textContent="Compile";controls();}
+
+function normalize(raw) {
+  if (
+    !raw ||
+    !Array.isArray(raw.projects) ||
+    !raw.projects.length ||
+    !Array.isArray(raw.trash)
+  ) {
+    throw Error("Invalid backup.");
+  }
+
+  const result = structuredClone(raw);
+  const ids = new Set();
+
+  for (const project of [...result.projects, ...result.trash]) {
+    if (!project.files && typeof project.source === "string") {
+      project.files = [textFile("main.tex", project.source)];
+      project.deletedFiles = [];
+      delete project.source;
+    }
+
+    validateProject(project);
+
+    if (ids.has(project.id)) throw Error("Duplicate project ID.");
+    ids.add(project.id);
+  }
+
+  if (!result.projects.some(project => project.id === result.activeId)) {
+    result.activeId = result.projects[0].id;
+  }
+
+  result.version = 2;
+  return result;
 }
-function base64(data){let result="";for(let i=0;i<data.length;i+=32768)result+=String.fromCharCode(...data.subarray(i,i+32768));return btoa(result);}
-async function upload(fileList,isFolder){
- if(busy)return;capture();busy=true;controls();
- try{
- const incoming=Array.from(fileList);if(incoming.length>MAX_COUNT)throw Error("Select no more than 200 files.");const additions=[],seen=new Set();
- for(const file of incoming){let path=isFolder?file.webkitRelativePath.split("/").slice(1).join("/"):file.name;
- if(!isFolder&&["png","jpg","jpeg","pdf"].includes(ext(path)))path="images/"+path;
- validPath(path);if(seen.has(path.toLowerCase()))throw Error("Duplicate upload path: "+path);seen.add(path.toLowerCase());
- if(file.size>MAX_FILE)throw Error("File exceeds 10 MB: "+path);
- const data=new Uint8Array(await file.arrayBuffer());additions.push(textExt.has(ext(path))?textFile(path,new TextDecoder("utf-8",{fatal:true}).decode(data)):{path,kind:"binary",base64:base64(data)});
- }
- const p=current(),next=structuredClone(p),collisions=additions.filter(f=>p.files.some(g=>g.path.toLowerCase()===f.path.toLowerCase()));
- if(collisions.length&&!confirm("Replace "+collisions.length+" existing file(s)? Previous versions can be restored with Restore file."))return;
- for(const f of additions){const old=next.files.find(g=>g.path.toLowerCase()===f.path.toLowerCase());if(old){next.deletedFiles.push(old);next.files=next.files.filter(g=>g!==old);}next.files.push(f);}
- validateProject(next);p.files=next.files;p.deletedFiles=next.deletedFiles;if(!selected())activePath="main.tex";clearPDF();showFile();const ok=await persist();msg(ok?"Files uploaded. Compile main.tex to include referenced files.":"Files loaded in memory only. Download a project ZIP or backup now.",!ok);
- }catch(e){msg("Upload failed: "+e.message,true);}finally{busy=false;controls();}
+
+function requestPromise(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
 }
-$("editor").oninput=()=>{renderEditor();capture();scheduleSave();pdfState();msg(storageOK&&!blocked?"Changes pending save…":"Saving unavailable. Back up before leaving.",!storageOK||blocked);};
-$("projectName").oninput=()=>{capture();scheduleSave();};
-$("editor").onkeydown=e=>{if(busy)return;if(e.key==="Tab"){e.preventDefault();$("editor").setRangeText("  ",$("editor").selectionStart,$("editor").selectionEnd,"end");$("editor").oninput();}if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();compile();}};
-$("compileButton").onclick=compile;
-$("clearToken").onclick=()=>{$("token").value="";msg("Token cleared. A request already sent will continue.");};
-$("sourceButton").textContent="Download selected file";
-$("sourceButton").onclick=$("downloadAsset").onclick=()=>{capture();const f=selected();download(new Blob([bytes(f)]),f.path.split("/").pop());};
-$("pdfButton").onclick=()=>{if(pdfURL&&compiledSignature===signature()){const a=document.createElement("a");a.href=pdfURL;a.download=filename()+".pdf";a.click();}};
-$("zipButton").onclick=()=>{capture();try{validateProject(current());download(makeZIP(current().files),filename()+".zip");}catch(e){msg(e.message,true);}};
-function addProject(book){if(busy)return;const name=prompt("Project name:",book?"My Book":"Untitled project");if(!name?.trim())return;mutate(()=>{const p=newProject(name.trim(),book?bookMain:article);if(book)p.files.push(textFile("chapters/chapter1.tex",chapter1),textFile("chapters/chapter2.tex",String.raw`\chapter{Next Steps}
-Write your second chapter here.`),textFile("references.bib",refs));state.projects.push(p);state.activeId=p.id;activePath="main.tex";},book?"Book created with two chapters and references.":"Project created.");}
+
+async function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("ieop-latex-books", 1);
+
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore("workspace");
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+
+    request.onblocked = () => {
+      reject(Error("Close other editor tabs and reload."));
+    };
+  });
+}
+
+async function readDB() {
+  return requestPromise(
+    db.transaction("workspace", "readonly")
+      .objectStore("workspace")
+      .get("state")
+  );
+}
+
+function capture() {
+  if (!state) return;
+
+  current().name = $("projectName").value;
+  const file = selected();
+
+  if (file?.kind === "text") {
+    file.text = $("editor").value;
+  }
+}
+
+function persist() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+
+  if (!state) return Promise.resolve(false);
+
+  capture();
+  const snapshot = structuredClone(state);
+
+  saveQueue = saveQueue.catch(() => false).then(() => new Promise(resolve => {
+    if (!db || blocked) {
+      storageOK = false;
+      resolve(false);
+      return;
+    }
+
+    try {
+      const transaction = db.transaction("workspace", "readwrite");
+      const store = transaction.objectStore("workspace");
+      let conflict = false;
+
+      const request = store.get("state");
+
+      request.onsuccess = () => {
+        const stored = request.result;
+
+        if ((stored?.revision || 0) !== revision) {
+          conflict = true;
+          transaction.abort();
+          return;
+        }
+
+        store.put({
+          revision: revision + 1,
+          state: snapshot
+        }, "state");
+      };
+
+      transaction.oncomplete = () => {
+        revision++;
+        storageOK = true;
+        channel?.postMessage({ sessionId });
+        resolve(true);
+      };
+
+      transaction.onabort = transaction.onerror = () => {
+        if (conflict) blocked = true;
+        storageOK = false;
+
+        msg(
+          conflict
+            ? "Another tab changed your projects. Download a backup, then reload. Saving is paused."
+            : "Browser saving failed. Download a backup before leaving.",
+          true
+        );
+
+        resolve(false);
+      };
+    } catch {
+      storageOK = false;
+      msg("Browser saving failed. Download a backup before leaving.", true);
+      resolve(false);
+    }
+  }));
+
+  return saveQueue;
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+
+  saveTimer = setTimeout(async () => {
+    const ok = await persist();
+    if (ok && !busy) msg("Saved on this device.");
+  }, 400);
+}
+
+function signature() {
+  return JSON.stringify(current().files);
+}
+
+function pdfState() {
+  const fresh = pdfURL && compiledSignature === signature();
+
+  $("pdfButton").disabled = !fresh || busy;
+  $("openPdf").hidden = !fresh;
+  $("previewTitle").textContent = pdfURL && !fresh
+    ? "PDF preview — changes need compilation"
+    : "PDF preview";
+}
+
+function clearErrors() {
+  $("compileErrors").hidden = true;
+  $("compileErrors").open = false;
+  $("compileErrorText").textContent = "";
+}
+
+function showError(message) {
+  $("compileErrorText").textContent = message;
+  $("compileErrors").hidden = false;
+  $("compileErrors").open = true;
+
+  msg("Compilation failed. See the error details below the editor.", true);
+
+  $("compileErrors").scrollIntoView({
+    behavior: "smooth",
+    block: "nearest"
+  });
+}
+
+function clearPDF() {
+  if (pdfURL) URL.revokeObjectURL(pdfURL);
+
+  pdfURL = null;
+  compiledSignature = null;
+
+  $("pdfViewer").removeAttribute("src");
+  $("pdfViewer").hidden = true;
+  $("emptyPreview").hidden = false;
+  $("openPdf").removeAttribute("href");
+
+  pdfState();
+}
+
+function renderList(id, items, selectedId, action, key) {
+  $(id).replaceChildren();
+
+  for (const item of items) {
+    const button = document.createElement("button");
+
+    button.textContent = key === "path"
+      ? item.path
+      : item.name.trim() || "Untitled project";
+
+    button.className =
+      (key === "path" ? "file-item" : "project-item") +
+      (item[key] === selectedId ? " selected" : "");
+
+    button.disabled = busy;
+
+    if (item[key] === selectedId) {
+      button.setAttribute("aria-current", "page");
+    }
+
+    button.onclick = () => action(item[key]);
+    $(id).appendChild(button);
+  }
+}
+
+function controls() {
+  const ids = [
+    "newProject", "newBook", "renameProject", "deleteProject",
+    "importProjects", "importButton", "folderButton", "newFile",
+    "renameFile", "deleteFile", "zipButton", "compileButton",
+    "addChapter", "insertFigure", "replaceOne", "replaceAll"
+  ];
+
+  for (const id of ids) $(id).disabled = busy;
+
+  $("projectName").disabled = busy;
+  $("editor").readOnly = busy;
+
+  $("restoreProject").disabled = busy || !state.trash.length;
+  $("restoreFile").disabled = busy || !current().deletedFiles.length;
+  $("renameFile").disabled = busy || activePath === "main.tex";
+  $("deleteFile").disabled = busy || activePath === "main.tex";
+
+  const isText = selected()?.kind === "text";
+  $("replaceOne").disabled = busy || !isText;
+  $("replaceAll").disabled = busy || !isText;
+  $("insertFigure").disabled = busy || !isText || ext(activePath) !== "tex";
+
+  renderList("projectList", state.projects, state.activeId, switchProject, "id");
+  renderList("fileList", current().files, activePath, switchFile, "path");
+  pdfState();
+}
+
+function showFile() {
+  const file = selected();
+  const isText = file.kind === "text";
+
+  $("fileTitle").textContent = file.path;
+  $("codeEditor").hidden = !isText;
+  $("editorPosition").hidden = !isText;
+  $("searchTools").hidden = !isText;
+  $("assetView").hidden = isText;
+  $("searchStatus").textContent = "";
+
+  if (assetURL) URL.revokeObjectURL(assetURL);
+  assetURL = null;
+
+  $("assetImage").hidden = true;
+  $("assetImage").removeAttribute("src");
+
+  if (isText) {
+    $("editor").value = file.text;
+    $("editor").scrollTop = 0;
+    $("editor").scrollLeft = 0;
+    renderEditor();
+  } else {
+    $("assetInfo").textContent =
+      file.path + " · " + (bytes(file).length / 1024).toFixed(1) + " KB";
+
+    if (["png", "jpg", "jpeg"].includes(ext(file.path))) {
+      assetURL = URL.createObjectURL(new Blob([bytes(file)]));
+      $("assetImage").src = assetURL;
+      $("assetImage").hidden = false;
+    }
+  }
+
+  controls();
+}
+
+async function switchProject(id) {
+  if (busy || id === state.activeId) return;
+
+  capture();
+  state.activeId = id;
+  activePath = "main.tex";
+  $("projectName").value = current().name;
+
+  clearErrors();
+  clearPDF();
+  showFile();
+
+  await persist();
+
+  msg(
+    storageOK
+      ? "Project opened. Compile to generate its PDF."
+      : "Project opened in memory. Back up your projects.",
+    !storageOK
+  );
+}
+
+async function switchFile(path) {
+  if (busy) return;
+
+  capture();
+  activePath = path;
+  showFile();
+  await persist();
+}
+
+async function mutate(action, notice) {
+  if (busy) return;
+
+  capture();
+
+  try {
+    action();
+    clearErrors();
+    clearPDF();
+
+    $("projectName").value = current().name;
+    if (!selected()) activePath = "main.tex";
+    showFile();
+
+    const ok = await persist();
+
+    msg(
+      ok ? notice : "Changes are in memory only. Back up your projects.",
+      !ok
+    );
+  } catch (error) {
+    msg(error.message, true);
+  }
+}
+
+function filename() {
+  return current().name.replace(/[^a-zA-Z0-9 _-]/g, "").trim() || "project";
+}
+
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+function crc32(data) {
+  let crc = 0xffffffff;
+
+  for (const byte of data) {
+    crc ^= byte;
+
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
+  }
+
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function makeZIP(files) {
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+  let centralSize = 0;
+
+  for (const file of files) {
+    const name = enc.encode(file.path);
+    const data = bytes(file);
+    const crc = crc32(data);
+
+    const head = new Uint8Array(30);
+    const h = new DataView(head.buffer);
+
+    h.setUint32(0, 0x04034b50, true);
+    h.setUint16(4, 20, true);
+    h.setUint16(6, 0x800, true);
+    h.setUint16(12, 33, true);
+    h.setUint32(14, crc, true);
+    h.setUint32(18, data.length, true);
+    h.setUint32(22, data.length, true);
+    h.setUint16(26, name.length, true);
+
+    chunks.push(head, name, data);
+
+    const record = new Uint8Array(46);
+    const d = new DataView(record.buffer);
+
+    d.setUint32(0, 0x02014b50, true);
+    d.setUint16(4, 20, true);
+    d.setUint16(6, 20, true);
+    d.setUint16(8, 0x800, true);
+    d.setUint16(14, 33, true);
+    d.setUint32(16, crc, true);
+    d.setUint32(20, data.length, true);
+    d.setUint32(24, data.length, true);
+    d.setUint16(28, name.length, true);
+    d.setUint32(42, offset, true);
+
+    central.push(record, name);
+    centralSize += 46 + name.length;
+    offset += 30 + name.length + data.length;
+  }
+
+  const end = new Uint8Array(22);
+  const e = new DataView(end.buffer);
+
+  e.setUint32(0, 0x06054b50, true);
+  e.setUint16(8, files.length, true);
+  e.setUint16(10, files.length, true);
+  e.setUint32(12, centralSize, true);
+  e.setUint32(16, offset, true);
+
+  return new Blob([...chunks, ...central, end], {
+    type: "application/zip"
+  });
+}
+
+async function compile() {
+  if (busy) return;
+
+  clearErrors();
+  capture();
+
+  const token = $("token").value.trim();
+
+  if (!token) {
+    msg("Enter your compiler token first.", true);
+    $("token").focus();
+    return;
+  }
+
+  let zip;
+
+  try {
+    validateProject(current());
+
+    if (!current().files.find(file => file.path === "main.tex").text.trim()) {
+      throw Error("main.tex is empty.");
+    }
+
+    zip = makeZIP(current().files);
+
+    if (zip.size > 14 * MB) {
+      throw Error("Project ZIP exceeds 14 MB. Reduce image sizes before compiling.");
+    }
+  } catch (error) {
+    showError(error.message);
+    return;
+  }
+
+  const snapshot = signature();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 150000);
+
+  busy = true;
+  controls();
+  $("compileButton").textContent = "Compiling…";
+
+  try {
+    await persist();
+
+    msg("Connecting to the compiler. An idle server may need a minute to wake up.");
+
+    const health = await fetch(API + "/", {
+      signal: controller.signal,
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "error"
+    });
+
+    if (!health.ok) throw Error("Compiler is not ready.");
+
+    const capabilities = await health.json();
+
+    if (!capabilities.supports?.includes("zip-project")) {
+      throw Error("Render is running the old compiler. Deploy the updated app.py first.");
+    }
+
+    const form = new FormData();
+    form.append("project", zip, "project.zip");
+
+    msg("Compiling all project files…");
+
+    const response = await fetch(API + "/compile", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token },
+      body: form,
+      signal: controller.signal,
+      credentials: "omit",
+      redirect: "error"
+    });
+
+    if (!response.ok) {
+      let detail = {};
+
+      try {
+        detail = await response.json();
+      } catch {}
+
+      throw Error(
+        response.status === 401
+          ? "Access denied. Check your token."
+          : detail.error || "Compiler returned HTTP " + response.status
+      );
+    }
+
+    if (!(response.headers.get("Content-Type") || "").includes("application/pdf")) {
+      throw Error("The server did not return a PDF.");
+    }
+
+    const blob = await response.blob();
+    if (!blob.size) throw Error("The PDF is empty.");
+
+    clearPDF();
+    pdfURL = URL.createObjectURL(blob);
+    compiledSignature = snapshot;
+
+    $("pdfViewer").src = pdfURL;
+    $("pdfViewer").hidden = false;
+    $("emptyPreview").hidden = true;
+    $("openPdf").href = pdfURL;
+
+    msg(
+      storageOK
+        ? "PDF compiled. Download PDF or Open PDF to view it."
+        : "PDF compiled. Browser saving failed; download a backup.",
+      !storageOK
+    );
+  } catch (error) {
+    showError(
+      error.name === "AbortError"
+        ? "Request timed out. Check Render, then try again."
+        : error.message || "Could not reach the compiler."
+    );
+  } finally {
+    clearTimeout(timer);
+    busy = false;
+    $("compileButton").textContent = "Compile";
+    controls();
+  }
+}
+
+function base64(data) {
+  let result = "";
+
+  for (let i = 0; i < data.length; i += 32768) {
+    result += String.fromCharCode(...data.subarray(i, i + 32768));
+  }
+
+  return btoa(result);
+}
+
+async function upload(fileList, isFolder) {
+  if (busy || !fileList.length) return;
+
+  capture();
+  busy = true;
+  controls();
+
+  try {
+    const incoming = Array.from(fileList);
+
+    if (incoming.length > MAX_COUNT) {
+      throw Error("Select no more than 200 files.");
+    }
+
+    const additions = [];
+    const seen = new Set();
+
+    for (const file of incoming) {
+      let path = isFolder
+        ? file.webkitRelativePath.split("/").slice(1).join("/")
+        : file.name;
+
+      if (!isFolder && ["png", "jpg", "jpeg", "pdf"].includes(ext(path))) {
+        path = "images/" + path;
+      }
+
+      validPath(path);
+
+      if (seen.has(path.toLowerCase())) {
+        throw Error("Duplicate upload path: " + path);
+      }
+
+      seen.add(path.toLowerCase());
+
+      if (file.size > MAX_FILE) {
+        throw Error("File exceeds 10 MB: " + path);
+      }
+
+      const data = new Uint8Array(await file.arrayBuffer());
+
+      additions.push(
+        textExt.has(ext(path))
+          ? textFile(path, new TextDecoder("utf-8", { fatal: true }).decode(data))
+          : { path, kind: "binary", base64: base64(data) }
+      );
+    }
+
+    const project = current();
+    const next = structuredClone(project);
+
+    const collisions = additions.filter(file =>
+      project.files.some(other =>
+        other.path.toLowerCase() === file.path.toLowerCase()
+      )
+    );
+
+    if (
+      collisions.length &&
+      !confirm(
+        "Replace " + collisions.length +
+        " existing file(s)? Previous versions are kept in deleted files."
+      )
+    ) {
+      return;
+    }
+
+    for (const file of additions) {
+      const old = next.files.find(other =>
+        other.path.toLowerCase() === file.path.toLowerCase()
+      );
+
+      if (old) {
+        next.deletedFiles.push(old);
+        next.files = next.files.filter(other => other !== old);
+      }
+
+      next.files.push(file);
+    }
+
+    validateProject(next);
+    project.files = next.files;
+    project.deletedFiles = next.deletedFiles;
+
+    if (!selected()) activePath = "main.tex";
+
+    clearErrors();
+    clearPDF();
+    showFile();
+
+    const ok = await persist();
+
+    msg(
+      ok
+        ? "Files uploaded. Compile main.tex to include referenced files."
+        : "Files loaded in memory only. Download a project ZIP or backup now.",
+      !ok
+    );
+  } catch (error) {
+    msg("Upload failed: " + error.message, true);
+  } finally {
+    busy = false;
+    controls();
+  }
+}
+
+function escapeLatex(text) {
+  return text.replace(/[\\{}$&#%_^~]/g, character => ({
+    "\\": "\\textbackslash{}",
+    "{": "\\{",
+    "}": "\\}",
+    "$": "\\$",
+    "&": "\\&",
+    "#": "\\#",
+    "%": "\\%",
+    "_": "\\_",
+    "^": "\\textasciicircum{}",
+    "~": "\\textasciitilde{}"
+  })[character]);
+}
+
+function addProject(book) {
+  if (busy) return;
+
+  const name = prompt("Project name:", book ? "My Book" : "Untitled project");
+  if (!name?.trim()) return;
+
+  mutate(() => {
+    const project = newProject(name.trim(), book ? bookMain : article);
+
+    if (book) {
+      project.files.push(
+        textFile("chapters/chapter1.tex", chapter1),
+        textFile(
+          "chapters/chapter2.tex",
+          "\\chapter{Next Steps}\nWrite your second chapter here.\n"
+        ),
+        textFile("references.bib", refs)
+      );
+    }
+
+    state.projects.push(project);
+    state.activeId = project.id;
+    activePath = "main.tex";
+  }, book ? "Book created with two chapters and references." : "Project created.");
+}
+
 $("newProject").onclick = () => addProject(false);
 $("newBook").onclick = () => addProject(true);
 
@@ -668,7 +1430,7 @@ $("addChapter").onclick = () => {
 
   mutate(() => {
     const project = structuredClone(current());
-    const main = project.files.find(f => f.path === "main.tex");
+    const main = project.files.find(file => file.path === "main.tex");
 
     if (!/\\documentclass(?:\[[^\]]*\])?\{(?:book|report)\}/.test(main.text)) {
       throw Error("Open a book or report project before adding a chapter.");
@@ -681,24 +1443,8 @@ $("addChapter").onclick = () => {
       path = `chapters/chapter${number++}.tex`;
     } while (
       [...project.files, ...project.deletedFiles].some(
-        f => f.path.toLowerCase() === path.toLowerCase()
+        file => file.path.toLowerCase() === path.toLowerCase()
       )
-    );
-
-    const safeTitle = title.trim().replace(
-      /[\\{}$&#%_^~]/g,
-      character => ({
-        "\\": "\\textbackslash{}",
-        "{": "\\{",
-        "}": "\\}",
-        "$": "\\$",
-        "&": "\\&",
-        "#": "\\#",
-        "%": "\\%",
-        "_": "\\_",
-        "^": "\\textasciicircum{}",
-        "~": "\\textasciitilde{}"
-      })[character]
     );
 
     const include = `\\include{${path.slice(0, -4)}}`;
@@ -717,7 +1463,7 @@ $("addChapter").onclick = () => {
 
     project.files.push(textFile(
       path,
-      `\\chapter{${safeTitle}}\n\nWrite your chapter here.\n`
+      `\\chapter{${escapeLatex(title.trim())}}\n\nWrite your chapter here.\n`
     ));
 
     validateProject(project);
@@ -727,35 +1473,39 @@ $("addChapter").onclick = () => {
 };
 
 $("renameProject").onclick = () => {
+  if (busy) return;
+
   const name = prompt("Project name:", current().name);
+
   if (name?.trim()) {
     mutate(() => current().name = name.trim(), "Project renamed.");
   }
 };
 
 $("deleteProject").onclick = () => {
-  if (busy) return;
-  if (confirm("Move this project to deleted projects?")) {
-    mutate(() => {
-      const old = current();
-      state.trash.push(old);
-      state.projects = state.projects.filter(p => p.id !== old.id);
+  if (busy || !confirm("Move this project to deleted projects?")) return;
 
-      if (!state.projects.length) {
-        state.projects.push(newProject("Untitled project"));
-      }
+  mutate(() => {
+    const old = current();
 
-      state.activeId = state.projects[0].id;
-      activePath = "main.tex";
-    }, "Project moved to deleted projects.");
-  }
+    state.trash.push(old);
+    state.projects = state.projects.filter(project => project.id !== old.id);
+
+    if (!state.projects.length) {
+      state.projects.push(newProject("Untitled project"));
+    }
+
+    state.activeId = state.projects[0].id;
+    activePath = "main.tex";
+  }, "Project moved to deleted projects.");
 };
 
 $("restoreProject").onclick = () => mutate(() => {
   if (!state.trash.length) return;
-  const p = state.trash.pop();
-  state.projects.push(p);
-  state.activeId = p.id;
+
+  const project = state.trash.pop();
+  state.projects.push(project);
+  state.activeId = project.id;
   activePath = "main.tex";
 }, "Project restored.");
 
@@ -776,10 +1526,11 @@ $("newFile").onclick = () => {
       throw Error("Create a text file here; use Upload files for images.");
     }
 
-    const p = structuredClone(current());
-    p.files.push(textFile(path, ""));
-    validateProject(p);
-    current().files = p.files;
+    const project = structuredClone(current());
+    project.files.push(textFile(path, ""));
+    validateProject(project);
+
+    current().files = project.files;
     activePath = path;
   }, "File created. Reference it from main.tex to include it in compilation.");
 };
@@ -797,10 +1548,11 @@ $("renameFile").onclick = () => {
       throw Error("Keep the same file extension.");
     }
 
-    const p = structuredClone(current());
-    p.files.find(f => f.path === activePath).path = path;
-    validateProject(p);
-    current().files = p.files;
+    const project = structuredClone(current());
+    project.files.find(file => file.path === activePath).path = path;
+    validateProject(project);
+
+    current().files = project.files;
     activePath = path;
   }, "File renamed. Update any LaTeX references to its old path.");
 };
@@ -810,52 +1562,136 @@ $("deleteFile").onclick = () => {
   if (!confirm("Delete " + activePath + "? You can restore it.")) return;
 
   mutate(() => {
-    const p = current();
-    p.deletedFiles.push(selected());
-    p.files = p.files.filter(f => f.path !== activePath);
+    const project = current();
+
+    project.deletedFiles.push(selected());
+    project.files = project.files.filter(file => file.path !== activePath);
     activePath = "main.tex";
   }, "File deleted. Update references or restore it before compiling.");
 };
 
 $("restoreFile").onclick = () => mutate(() => {
-  const p = current();
-  const f = p.deletedFiles.at(-1);
-  if (!f) return;
+  const project = current();
+  const file = project.deletedFiles.at(-1);
 
-  const next = structuredClone(p);
+  if (!file) return;
 
-  if (next.files.some(
-    g => g.path.toLowerCase() === f.path.toLowerCase()
+  const next = structuredClone(project);
+
+  if (next.files.some(other =>
+    other.path.toLowerCase() === file.path.toLowerCase()
   )) {
     throw Error(
-      "Rename the existing file at " + f.path +
+      "Rename the existing file at " + file.path +
       " before restoring this version."
     );
   }
 
-  next.files.push(f);
+  next.files.push(file);
   next.deletedFiles.pop();
   validateProject(next);
-  p.files = next.files;
-  p.deletedFiles = next.deletedFiles;
-  activePath = f.path;
+
+  project.files = next.files;
+  project.deletedFiles = next.deletedFiles;
+  activePath = file.path;
 }, "File restored.");
+
+$("editor").oninput = () => {
+  renderEditor();
+  capture();
+  scheduleSave();
+  pdfState();
+
+  msg(
+    storageOK && !blocked
+      ? "Changes pending save…"
+      : "Saving unavailable. Back up before leaving.",
+    !storageOK || blocked
+  );
+};
+
+$("projectName").oninput = () => {
+  capture();
+  scheduleSave();
+};
+
+$("editor").onkeydown = event => {
+  if (busy) return;
+
+  if (event.key === "Tab") {
+    event.preventDefault();
+
+    $("editor").setRangeText(
+      "  ",
+      $("editor").selectionStart,
+      $("editor").selectionEnd,
+      "end"
+    );
+
+    $("editor").oninput();
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    compile();
+  }
+};
+
+$("compileButton").onclick = compile;
+
+$("clearToken").onclick = () => {
+  $("token").value = "";
+  msg("Token cleared. A request already sent will continue.");
+};
+
+$("sourceButton").onclick = $("downloadAsset").onclick = () => {
+  capture();
+  const file = selected();
+
+  download(
+    new Blob([bytes(file)]),
+    file.path.split("/").pop()
+  );
+};
+
+$("pdfButton").onclick = () => {
+  if (pdfURL && compiledSignature === signature()) {
+    const link = document.createElement("a");
+    link.href = pdfURL;
+    link.download = filename() + ".pdf";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+};
+
+$("zipButton").onclick = () => {
+  capture();
+
+  try {
+    validateProject(current());
+    download(makeZIP(current().files), filename() + ".zip");
+  } catch (error) {
+    msg(error.message, true);
+  }
+};
 
 $("importButton").onclick = () => $("fileInput").click();
 $("folderButton").onclick = () => $("folderInput").click();
 
-$("fileInput").onchange = async e => {
-  await upload(e.target.files, false);
-  e.target.value = "";
+$("fileInput").onchange = async event => {
+  await upload(event.target.files, false);
+  event.target.value = "";
 };
 
-$("folderInput").onchange = async e => {
-  await upload(e.target.files, true);
-  e.target.value = "";
+$("folderInput").onchange = async event => {
+  await upload(event.target.files, true);
+  event.target.value = "";
 };
 
 $("backupProjects").onclick = () => {
   capture();
+
   download(
     new Blob([JSON.stringify(state)], { type: "application/json" }),
     "ieop-projects-backup.json"
@@ -864,14 +1700,14 @@ $("backupProjects").onclick = () => {
 
 $("importProjects").onclick = () => $("backupInput").click();
 
-$("backupInput").onchange = async e => {
+$("backupInput").onchange = async event => {
   if (busy) return;
 
-  const file = e.target.files[0];
+  const file = event.target.files[0];
   if (!file) return;
 
-  busy = true;
   capture();
+  busy = true;
   controls();
 
   try {
@@ -881,15 +1717,15 @@ $("backupInput").onchange = async e => {
 
     const data = normalize(JSON.parse(await file.text()));
 
-    for (const p of data.projects) {
-      p.id = uid();
-      p.name += " (imported)";
-      state.projects.push(p);
+    for (const project of data.projects) {
+      project.id = uid();
+      project.name += " (imported)";
+      state.projects.push(project);
     }
 
-    for (const p of data.trash) {
-      p.id = uid();
-      state.trash.push(p);
+    for (const project of data.trash) {
+      project.id = uid();
+      state.trash.push(project);
     }
 
     const ok = await persist();
@@ -900,66 +1736,84 @@ $("backupInput").onchange = async e => {
         : "Backup imported in memory only. Saving unavailable.",
       !ok
     );
-  } catch (err) {
-    msg(err.message, true);
+  } catch (error) {
+    msg(error.message, true);
   } finally {
     busy = false;
-    e.target.value = "";
+    event.target.value = "";
     controls();
   }
 };
 
-if (channel) {
-  channel.onmessage = e => {
-    if (e.data.sessionId !== sessionId) {
-      blocked = true;
-      storageOK = false;
-      msg(
-        "Projects changed in another tab. Back up this tab, then reload. Saving is paused.",
-        true
-      );
-    }
-  };
+function escapeCode(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
-window.addEventListener("beforeunload", e => {
-  if (saveTimer || !storageOK) {
-    e.preventDefault();
-    e.returnValue = "";
+function highlightSource(source) {
+  const tokens = /(%[^\n]*|\\(?:[a-zA-Z@]+\*?|[^\n])|@[a-zA-Z]+|[{}\[\]]|\$\$?)/g;
+
+  let out = "";
+  let last = 0;
+
+  for (const match of source.matchAll(tokens)) {
+    out += escapeCode(source.slice(last, match.index));
+
+    const token = match[0];
+    const type = token[0] === "%" ? "comment"
+      : token[0] === "\\" ? "command"
+      : token[0] === "@" ? "entry"
+      : token[0] === "$" ? "math"
+      : "brace";
+
+    out += '<span class="tok-' + type + '">' + escapeCode(token) + "</span>";
+    last = match.index + token.length;
   }
-});
 
-window.addEventListener("pagehide", () => {
-  $("token").value = "";
-});
-
-// Highlight display only: the textarea remains the source of truth for editing and saving.
-function escapeCode(text){return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
-function highlightSource(source){
- const tokens=/(%[^\n]*|\\(?:[a-zA-Z@]+\*?|[^\n])|@[a-zA-Z]+|[{}\[\]]|\$\$?)/g;
- let out="",last=0;
- for(const match of source.matchAll(tokens)){
-  out+=escapeCode(source.slice(last,match.index));const token=match[0];
-  const cls=token[0]==="%"?"comment":token[0]==="\\"?"command":token[0]==="@"?"entry":token[0]==="$"?"math":"brace";
-  out+='<span class="tok-'+cls+'">'+escapeCode(token)+'</span>';last=match.index+token.length;
- }
- return out+escapeCode(source.slice(last))+"\n";
+  return out + escapeCode(source.slice(last)) + "\n";
 }
-function syncEditorScroll(){const e=$("editor");$("highlight").scrollTop=e.scrollTop;$("highlight").scrollLeft=e.scrollLeft;$("lineNumbers").scrollTop=e.scrollTop;}
-function updatePosition(){const e=$("editor"),before=e.value.slice(0,e.selectionStart),lines=before.split("\n");$("editorPosition").textContent="Line "+lines.length+", column "+(lines.at(-1).length+1);}
-function renderEditor(){const source=$("editor").value;$("highlight").innerHTML=highlightSource(source);$("lineNumbers").textContent=Array.from({length:source.split("\n").length},(_,i)=>i+1).join("\n")+"\n";syncEditorScroll();updatePosition();}
-$("editor").addEventListener("scroll",syncEditorScroll);
-for(const event of ["click","keyup","select","input"])$("editor").addEventListener(event,updatePosition);
 
-async function init(){
- // Disable controls until stored projects have loaded.
- document.querySelectorAll("button,input,textarea").forEach(x=>x.disabled=true);
- try{db=await openDB();const record=await readDB();revision=record?.revision||0;if(record)state=normalize(record.state);else{const v1=localStorage.getItem("ieop-latex-studio-projects-v1");if(v1!==null)state=normalize(JSON.parse(v1));else{const old=JSON.parse(localStorage.getItem("ieop-latex-studio-v1")||"null");const p=newProject(old?.name||"My first document",typeof old?.source==="string"?old.source:article);state={version:2,projects:[p],trash:[],activeId:p.id};}}}
- catch(e){blocked=true;storageOK=false;const p=newProject("Recovery workspace");state={version:2,projects:[p],trash:[],activeId:p.id};msg("Storage could not be opened. Existing data was not overwritten. You can import a backup and work in memory.",true);}
- $("projectName").value=current().name;document.querySelectorAll("button,input,textarea").forEach(x=>x.disabled=false);showFile();
- if(!blocked){const ok=await persist();msg(ok?"Projects ready. Use + Book project to start a book.":"Saving unavailable. Back up before leaving.",!ok);}
+function syncEditorScroll() {
+  const editor = $("editor");
+
+  $("highlight").scrollTop = editor.scrollTop;
+  $("highlight").scrollLeft = editor.scrollLeft;
+  $("lineNumbers").scrollTop = editor.scrollTop;
 }
- function canSearch() {
+
+function updatePosition() {
+  const editor = $("editor");
+  const before = editor.value.slice(0, editor.selectionStart);
+  const lines = before.split("\n");
+
+  $("editorPosition").textContent =
+    "Line " + lines.length + ", column " + (lines.at(-1).length + 1);
+}
+
+function renderEditor() {
+  const source = $("editor").value;
+
+  $("highlight").innerHTML = highlightSource(source);
+  $("lineNumbers").textContent = Array.from(
+    { length: source.split("\n").length },
+    (_, index) => index + 1
+  ).join("\n") + "\n";
+
+  syncEditorScroll();
+  updatePosition();
+}
+
+$("editor").addEventListener("scroll", syncEditorScroll);
+
+for (const event of ["click", "keyup", "select", "input"]) {
+  $("editor").addEventListener(event, updatePosition);
+}
+
+function canSearch() {
   return state && selected()?.kind === "text";
 }
 
@@ -980,9 +1834,7 @@ function findNextMatch() {
 
   let index = editor.value.indexOf(query, editor.selectionEnd);
 
-  if (index < 0) {
-    index = editor.value.indexOf(query);
-  }
+  if (index < 0) index = editor.value.indexOf(query);
 
   if (index < 0) {
     $("searchStatus").textContent = "No matches.";
@@ -992,9 +1844,13 @@ function findNextMatch() {
   editor.focus();
   editor.setSelectionRange(index, index + query.length);
 
-  const line = editor.value.slice(0, index).split("\n").length;
+  const before = editor.value.slice(0, index);
+  const line = before.split("\n").length;
+  const column = index - before.lastIndexOf("\n") - 1;
+
   editor.scrollTop = Math.max(0, (line - 3) * 24);
-  editor.scrollLeft = 0;
+  editor.scrollLeft = Math.max(0, column * 8.5 - 40);
+
   syncEditorScroll();
   updatePosition();
 
@@ -1008,6 +1864,7 @@ $("replaceOne").onclick = () => {
 
   const editor = $("editor");
   const query = $("findText").value;
+
   if (!query) {
     findNextMatch();
     return;
@@ -1053,12 +1910,11 @@ $("replaceAll").onclick = () => {
     return;
   }
 
-  if (!confirm("Replace all " + count + " matches in this file?")) {
-    return;
-  }
+  if (!confirm("Replace all " + count + " matches in this file?")) return;
 
   editor.value = parts.join($("replaceText").value);
   editor.oninput();
+
   $("searchStatus").textContent = count + " matches replaced.";
 };
 
@@ -1074,18 +1930,20 @@ $("findText").addEventListener("input", () => {
 });
 
 $("editor").addEventListener("keydown", event => {
-  if ((event.ctrlKey || event.metaKey) &&
-      event.key.toLowerCase() === "f") {
+  if (
+    (event.ctrlKey || event.metaKey) &&
+    event.key.toLowerCase() === "f"
+  ) {
     event.preventDefault();
     $("findText").focus();
     $("findText").select();
   }
 });
+
 $("insertFigure").onclick = () => {
   if (busy) return;
 
-  if (!state || selected()?.kind !== "text" ||
-      !activePath.endsWith(".tex")) {
+  if (!state || selected()?.kind !== "text" || ext(activePath) !== "tex") {
     msg("Open a .tex file where you want the figure.", true);
     return;
   }
@@ -1112,8 +1970,7 @@ $("insertFigure").onclick = () => {
 
   const number = Number(answer);
 
-  if (!Number.isInteger(number) ||
-      number < 1 || number > images.length) {
+  if (!Number.isInteger(number) || number < 1 || number > images.length) {
     msg("Enter a valid image number.", true);
     return;
   }
@@ -1130,22 +1987,6 @@ $("insertFigure").onclick = () => {
 
   const caption = prompt("Figure caption:", "Describe your figure.");
   if (caption === null) return;
-
-  const safeCaption = caption.replace(
-    /[\\{}$&#%_^~]/g,
-    character => ({
-      "\\": "\\textbackslash{}",
-      "{": "\\{",
-      "}": "\\}",
-      "$": "\\$",
-      "&": "\\&",
-      "#": "\\#",
-      "%": "\\%",
-      "_": "\\_",
-      "^": "\\textasciicircum{}",
-      "~": "\\textasciitilde{}"
-    })[character]
-  );
 
   const baseLabel = "fig:" + path
     .replace(/\.[^.]+$/, "")
@@ -1168,7 +2009,7 @@ $("insertFigure").onclick = () => {
     "\\begin{figure}[htbp]",
     "  \\centering",
     `  \\includegraphics[width=0.8\\textwidth]{${path}}`,
-    `  \\caption{${safeCaption}}`,
+    `  \\caption{${escapeLatex(caption)}}`,
     `  \\label{${label}}`,
     "\\end{figure}",
     ""
@@ -1186,11 +2027,116 @@ $("insertFigure").onclick = () => {
   editor.oninput();
   editor.focus();
 
-  msg(
-    "Figure inserted. Ensure main.tex loads \\usepackage{graphicx}, then compile."
-  );
+  msg("Figure inserted. Ensure main.tex loads \\usepackage{graphicx}, then compile.");
 };
- 
+
+if (channel) {
+  channel.onmessage = event => {
+    if (event.data.sessionId !== sessionId) {
+      blocked = true;
+      storageOK = false;
+
+      msg(
+        "Projects changed in another tab. Back up this tab, then reload. Saving is paused.",
+        true
+      );
+    }
+  };
+}
+
+window.addEventListener("beforeunload", event => {
+  if (saveTimer || !storageOK) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
+});
+
+window.addEventListener("pagehide", () => {
+  $("token").value = "";
+});
+
+async function init() {
+  document.querySelectorAll("button,input,textarea").forEach(
+    element => element.disabled = true
+  );
+
+  try {
+    db = await openDB();
+
+    db.onversionchange = () => {
+      db.close();
+      blocked = true;
+      storageOK = false;
+      msg("Storage changed in another tab. Back up your work and reload.", true);
+    };
+
+    const record = await readDB();
+    revision = record?.revision || 0;
+
+    if (record) {
+      state = normalize(record.state);
+    } else {
+      const previous = localStorage.getItem("ieop-latex-studio-projects-v1");
+
+      if (previous !== null) {
+        state = normalize(JSON.parse(previous));
+      } else {
+        const old = JSON.parse(
+          localStorage.getItem("ieop-latex-studio-v1") || "null"
+        );
+
+        const project = newProject(
+          old?.name || "My first document",
+          typeof old?.source === "string" ? old.source : article
+        );
+
+        state = {
+          version: 2,
+          projects: [project],
+          trash: [],
+          activeId: project.id
+        };
+      }
+    }
+  } catch {
+    blocked = true;
+    storageOK = false;
+
+    const project = newProject("Recovery workspace");
+
+    state = {
+      version: 2,
+      projects: [project],
+      trash: [],
+      activeId: project.id
+    };
+
+    msg(
+      "Storage could not be opened. Existing data was not overwritten. You can import a backup and work in memory.",
+      true
+    );
+  }
+
+  $("projectName").value = current().name;
+
+  document.querySelectorAll("button,input,textarea").forEach(
+    element => element.disabled = false
+  );
+
+  showFile();
+
+  if (!blocked) {
+    const ok = await persist();
+
+    msg(
+      ok
+        ? "Projects ready. Open a project or create a new one."
+        : "Saving unavailable. Back up before leaving.",
+      !ok
+    );
+  }
+}
+
 init();
 </script>
 </body>
