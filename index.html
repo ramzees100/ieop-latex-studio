@@ -391,6 +391,22 @@
     </div>
 
     <nav id="fileList" aria-label="Choose a file"></nav>
+   <h2 class="files-heading">Book outline</h2>
+
+<button id="refreshOutline" type="button">
+  Refresh outline
+</button>
+
+<nav
+  id="bookOutline"
+  aria-label="Chapters and sections"
+  style="display:flex; flex-direction:column; gap:5px; margin-top:10px;"
+></nav>
+
+<p class="hint">
+  Click a chapter or section to open its source.
+  Refresh the outline after changing headings.
+</p>
 
     <p class="hint">
       Files can use paths such as chapters/chapter1.tex or images/figure.png.
@@ -930,6 +946,8 @@ function renderList(id, items, selectedId, action, key) {
 }
 
 function controls() {
+ $("refreshOutline").disabled = busy;
+refreshBookOutline();
   const ids = [
     "newProject", "newBook", "renameProject", "deleteProject",
     "importProjects", "importButton", "folderButton", "newFile",
@@ -2136,7 +2154,93 @@ async function init() {
     );
   }
 }
+function refreshBookOutline() {
+  if (!state) return;
 
+  capture();
+
+  const outline = $("bookOutline");
+  outline.replaceChildren();
+
+  // Scan main.tex first, followed by the other LaTeX files.
+  const files = current().files
+    .filter(file => file.kind === "text" && ext(file.path) === "tex")
+    .sort((a, b) => {
+      if (a.path === "main.tex") return -1;
+      if (b.path === "main.tex") return 1;
+      return a.path.localeCompare(b.path, undefined, { numeric: true });
+    });
+
+  let count = 0;
+
+  for (const file of files) {
+    const lines = file.text.split("\n");
+    let offset = 0;
+
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
+
+      // Supports ordinary headings written on a single line.
+      const heading = line.match(
+        /^[ \t]*\\(chapter|section|subsection)\*?(?:\[[^\]]*\])?\{([^{}]+)\}/
+      );
+
+      if (heading) {
+        const position = offset;
+        const lineNumber = index + 1;
+        const path = file.path;
+        const level = heading[1];
+        const title = heading[2];
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "file-item";
+        button.textContent = title;
+        button.title = `${path}, line ${lineNumber}`;
+        button.disabled = busy;
+
+        button.style.paddingLeft = level === "chapter"
+          ? "8px"
+          : level === "section" ? "18px" : "28px";
+
+        if (level === "chapter") {
+          button.style.fontWeight = "bold";
+        }
+
+        button.onclick = async () => {
+          if (busy) return;
+
+          await switchFile(path);
+
+          const editor = $("editor");
+          editor.focus();
+          editor.setSelectionRange(position, position);
+          editor.scrollTop = Math.max(0, (lineNumber - 3) * 24);
+          editor.scrollLeft = 0;
+
+          syncEditorScroll();
+          updatePosition();
+        };
+
+        outline.appendChild(button);
+        count++;
+      }
+
+      offset += line.length + 1;
+    }
+  }
+
+  if (!count) {
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.textContent = "No chapter or section headings found.";
+    outline.appendChild(note);
+  }
+}
+
+$("refreshOutline").onclick = () => {
+  if (!busy) refreshBookOutline();
+};
 init();
 </script>
 </body>
