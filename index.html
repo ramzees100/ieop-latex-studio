@@ -364,7 +364,8 @@
     <h2 class="files-heading">Project files</h2>
     <div class="project-tools">
   <button id="newFile">+ Text file</button>
-  <button id="addChapter">+ Add chapter</button>
+     <button id="addChapter">+ Add chapter</button>
+<button id="insertFigure" type="button">+ Insert figure</button>
   <button id="renameFile">Rename file</button>
   <button id="deleteFile">Delete file</button>
   <button id="restoreFile">Restore file</button>
@@ -577,6 +578,7 @@ function pdfState(){const fresh=pdfURL&&compiledSignature===signature();$("pdfBu
 function clearPDF(){if(pdfURL)URL.revokeObjectURL(pdfURL);pdfURL=null;compiledSignature=null;$("pdfViewer").removeAttribute("src");$("pdfViewer").hidden=true;$("emptyPreview").hidden=false;$("openPdf").removeAttribute("href");pdfState();}
 function renderList(id,items,selectedId,action,key){$(id).replaceChildren();for(const item of items){const b=document.createElement("button");b.textContent=key==="path"?item.path:(item.name.trim()||"Untitled project");b.className=(key==="path"?"file-item":"project-item")+(item[key]===selectedId?" selected":"");b.disabled=busy;if(item[key]===selectedId)b.setAttribute("aria-current","page");b.onclick=()=>action(item[key]);$(id).appendChild(b);}}
 function controls(){
+ $("insertFigure").disabled = busy;
  $("replaceOne").disabled = busy;
 $("replaceAll").disabled = busy;
   $("addChapter").disabled = busy;
@@ -1079,6 +1081,116 @@ $("editor").addEventListener("keydown", event => {
     $("findText").select();
   }
 });
+$("insertFigure").onclick = () => {
+  if (busy) return;
+
+  if (!state || selected()?.kind !== "text" ||
+      !activePath.endsWith(".tex")) {
+    msg("Open a .tex file where you want the figure.", true);
+    return;
+  }
+
+  const images = current().files.filter(
+    file => ["png", "jpg", "jpeg", "pdf"].includes(ext(file.path))
+  );
+
+  if (!images.length) {
+    msg("Use Upload files to upload an image first.", true);
+    return;
+  }
+
+  const choices = images.map(
+    (file, index) => `${index + 1}. ${file.path}`
+  ).join("\n");
+
+  const answer = prompt(
+    "Choose an image by entering its number:\n\n" + choices,
+    "1"
+  );
+
+  if (answer === null) return;
+
+  const number = Number(answer);
+
+  if (!Number.isInteger(number) ||
+      number < 1 || number > images.length) {
+    msg("Enter a valid image number.", true);
+    return;
+  }
+
+  const path = images[number - 1].path;
+
+  if (!/^[a-zA-Z0-9_./-]+$/.test(path)) {
+    msg(
+      "Rename the image using letters, numbers, hyphens, or underscores before inserting it.",
+      true
+    );
+    return;
+  }
+
+  const caption = prompt("Figure caption:", "Describe your figure.");
+  if (caption === null) return;
+
+  const safeCaption = caption.replace(
+    /[\\{}$&#%_^~]/g,
+    character => ({
+      "\\": "\\textbackslash{}",
+      "{": "\\{",
+      "}": "\\}",
+      "$": "\\$",
+      "&": "\\&",
+      "#": "\\#",
+      "%": "\\%",
+      "_": "\\_",
+      "^": "\\textasciicircum{}",
+      "~": "\\textasciitilde{}"
+    })[character]
+  );
+
+  const baseLabel = "fig:" + path
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-");
+
+  const allSource = current().files
+    .filter(file => file.kind === "text")
+    .map(file => file.text)
+    .join("\n") + "\n" + $("editor").value;
+
+  let label = baseLabel;
+  let suffix = 2;
+
+  while (allSource.includes("\\label{" + label + "}")) {
+    label = baseLabel + "-" + suffix++;
+  }
+
+  const code = [
+    "",
+    "\\begin{figure}[htbp]",
+    "  \\centering",
+    `  \\includegraphics[width=0.8\\textwidth]{${path}}`,
+    `  \\caption{${safeCaption}}`,
+    `  \\label{${label}}`,
+    "\\end{figure}",
+    ""
+  ].join("\n");
+
+  const editor = $("editor");
+
+  editor.setRangeText(
+    code,
+    editor.selectionStart,
+    editor.selectionEnd,
+    "end"
+  );
+
+  editor.oninput();
+  editor.focus();
+
+  msg(
+    "Figure inserted. Ensure main.tex loads \\usepackage{graphicx}, then compile."
+  );
+};
+ 
 init();
 </script>
 </body>
