@@ -426,6 +426,7 @@
       <button id="newFile">+ Text file</button>
       <button id="addChapter">+ Add chapter</button>
       <button id="insertFigure">+ Insert figure</button>
+     <button id="insertCitation" type="button">+ Insert citation</button>
       <button id="renameFile">Rename file</button>
       <button id="deleteFile">Delete file</button>
       <button id="restoreFile">Restore file</button>
@@ -1004,6 +1005,10 @@ function renderList(id, items, selectedId, action, key) {
 }
 
 function controls() {
+ $("insertCitation").disabled =
+  busy ||
+  selected()?.kind !== "text" ||
+  ext(activePath) !== "tex";
  $("duplicateProject").disabled = busy;
  $("compileChapterButton").disabled =
   busy ||
@@ -2642,6 +2647,83 @@ applyEditorFontSize();
 
   syncEditorScroll();
   updatePosition();
+};
+ $("insertCitation").onclick = () => {
+  if (busy) return;
+
+  if (!state || selected()?.kind !== "text" ||
+      ext(activePath) !== "tex") {
+    msg("Open a .tex file where you want the citation.", true);
+    return;
+  }
+
+  capture();
+
+  const references = new Map();
+
+  for (const file of current().files) {
+    if (file.kind !== "text" || ext(file.path) !== "bib") continue;
+
+    // Read ordinary BibTeX entries; skip comment and string entries.
+    const pattern = /^[ \t]*@([a-zA-Z]+)\s*[{(]\s*([^,\s{}()]+)\s*,/gm;
+
+    for (const match of file.text.matchAll(pattern)) {
+      const type = match[1].toLowerCase();
+      const key = match[2];
+
+      if (["comment", "string", "preamble"].includes(type)) continue;
+
+      // Keep citation keys safe to insert into a LaTeX command.
+      if (!/^[a-zA-Z0-9_:./+-]+$/.test(key)) continue;
+
+      if (!references.has(key)) {
+        references.set(key, file.path);
+      }
+    }
+  }
+
+  const entries = Array.from(references);
+
+  if (!entries.length) {
+    msg("No supported citation keys found. Add references to a .bib file first.", true);
+    return;
+  }
+
+  const choices = entries.map(
+    ([key, path], index) => `${index + 1}. ${key} (${path})`
+  ).join("\n");
+
+  const answer = prompt(
+    "Choose a reference by entering its number:\n\n" + choices,
+    "1"
+  );
+
+  if (answer === null) return;
+
+  const number = Number(answer);
+
+  if (!Number.isInteger(number) ||
+      number < 1 || number > entries.length) {
+    msg("Enter a valid reference number.", true);
+    return;
+  }
+
+  const key = entries[number - 1][0];
+  const editor = $("editor");
+
+  editor.setRangeText(
+    "\\cite{" + key + "}",
+    editor.selectionStart,
+    editor.selectionEnd,
+    "end"
+  );
+
+  editor.oninput();
+  editor.focus();
+
+  msg(
+    "Citation inserted. Ensure main.tex includes the bibliography file, then compile."
+  );
 };
 init();
 </script>
