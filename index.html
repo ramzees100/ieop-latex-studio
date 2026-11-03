@@ -938,12 +938,13 @@ function signature() {
 
 function pdfState() {
   const fresh = pdfURL && compiledSignature === signature();
-
   $("pdfButton").disabled = !fresh || busy;
   $("openPdf").hidden = !fresh;
-  $("previewTitle").textContent = pdfURL && !fresh
-    ? "PDF preview — changes need compilation"
+  let title = pdfURL && compiledChapter
+    ? "Chapter PDF — " + compiledChapter
     : "PDF preview";
+  if (pdfURL && !fresh) title += " — changes need compilation";
+  $("previewTitle").textContent = title;
 }
 
 function clearErrors() {
@@ -970,6 +971,7 @@ function clearPDF() {
 
   pdfURL = null;
   compiledSignature = null;
+  compiledChapter = null;
 
   $("pdfViewer").removeAttribute("src");
   $("pdfViewer").hidden = true;
@@ -1754,22 +1756,7 @@ $("editor").oninput = () => {
   renderEditor();
   capture();
   scheduleSave();
-  function pdfState() {
-  const fresh = pdfURL && compiledSignature === signature();
-
-  $("pdfButton").disabled = !fresh || busy;
-  $("openPdf").hidden = !fresh;
-
-  let title = compiledChapter
-    ? "Chapter PDF — " + compiledChapter
-    : "PDF preview";
-
-  if (pdfURL && !fresh) {
-    title += " — changes need compilation";
-  }
-
-  $("previewTitle").textContent = title;
-}
+  pdfState();
 
   msg(
     storageOK && !blocked
@@ -2366,7 +2353,7 @@ function refreshBookOutline() {
           const editor = $("editor");
           editor.focus();
           editor.setSelectionRange(position, position);
-          editor.scrollTop = Math.max(0, (lineNumber - 3) * 24);
+          editor.scrollTop = Math.max(0, (lineNumber - 3) * editorLineHeight());
           editor.scrollLeft = 0;
 
           syncEditorScroll();
