@@ -462,6 +462,7 @@
   <button id="smallerFont" type="button">A−</button>
   <span id="fontSizeLabel">14 px</span>
   <button id="largerFont" type="button">A+</button>
+  <button id="goToLine" type="button">Go to line</button>
 </div>
 
       <div id="searchTools" class="toolbar">
@@ -2556,6 +2557,50 @@ $("largerFont").onclick = () => {
 };
 
 applyEditorFontSize();
+ $("goToLine").onclick = () => {
+  if (!state || selected()?.kind !== "text") {
+    msg("Open a text file first.", true);
+    return;
+  }
+
+  const editor = $("editor");
+  const lines = editor.value.split("\n");
+
+  const answer = prompt(
+    "Enter a line number from 1 to " + lines.length + ":",
+    "1"
+  );
+
+  if (answer === null) return;
+
+  const lineNumber = Number(answer);
+
+  if (
+    !Number.isInteger(lineNumber) ||
+    lineNumber < 1 ||
+    lineNumber > lines.length
+  ) {
+    msg("Enter a valid line number.", true);
+    return;
+  }
+
+  let position = 0;
+
+  for (let i = 0; i < lineNumber - 1; i++) {
+    position += lines[i].length + 1;
+  }
+
+  editor.focus();
+  editor.setSelectionRange(position, position);
+  editor.scrollTop = Math.max(
+    0,
+    (lineNumber - 3) * editorLineHeight()
+  );
+  editor.scrollLeft = 0;
+
+  syncEditorScroll();
+  updatePosition();
+};
 init();
 </script>
 </body>
