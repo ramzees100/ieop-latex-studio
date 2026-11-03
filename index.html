@@ -2390,12 +2390,33 @@ $("refreshOutline").onclick = () => {
  const panelDivider = $("panelDivider");
 const panelLayout = document.querySelector("main");
 const desktopPanels = window.matchMedia("(min-width: 1101px)");
+ let editorShare = 50;
 
-let editorShare = 50;
+try {
+  const savedShare = localStorage.getItem("ieop-editor-panel-share");
+
+  if (savedShare !== null) {
+    const value = Number(savedShare);
+
+    if (Number.isFinite(value) && value >= 25 && value <= 75) {
+      editorShare = value;
+    }
+  }
+} catch {
+  // Keep equal panel widths if storage is unavailable.
+}
 let resizingPointer = null;
 
 function setPanelShare(value) {
   editorShare = Math.max(25, Math.min(75, value));
+ try {
+  localStorage.setItem(
+    "ieop-editor-panel-share",
+    String(editorShare)
+  );
+} catch {
+  // Resizing still works if saving is unavailable.
+}
 
   panelLayout.style.setProperty(
     "--editor-share",
@@ -2501,7 +2522,7 @@ panelDivider.addEventListener("dblclick", () => {
   setPanelShare(50);
 });
 
-setPanelShare(50);
+ setPanelShare(editorShare);
  $("duplicateProject").onclick = () => {
   if (busy) return;
 
@@ -2527,11 +2548,32 @@ setPanelShare(50);
 };
  let editorFontSize = 14;
 
+try {
+  const savedSize = Number(
+    localStorage.getItem("ieop-editor-font-size")
+  );
+
+  if (Number.isInteger(savedSize) &&
+      savedSize >= 10 && savedSize <= 24) {
+    editorFontSize = savedSize;
+  }
+} catch {
+  // Keep the default if browser storage is unavailable.
+}
+
 function editorLineHeight() {
   return parseFloat(getComputedStyle($("editor")).lineHeight) || 24;
 }
 
 function applyEditorFontSize() {
+ try {
+  localStorage.setItem(
+    "ieop-editor-font-size",
+    String(editorFontSize)
+  );
+} catch {
+  // Font controls still work if saving is unavailable.
+}
   const lineHeight = Math.round(editorFontSize * 1.7);
 
   for (const id of ["editor", "highlight", "lineNumbers"]) {
