@@ -640,3 +640,16 @@
     font-size: 25px;
   }
 }
+#projectsDashboard .dashboard-layout {
+  grid-template-columns: 264px minmax(0, 1fr);
+}
+
+#projectsDashboard .dashboard-content {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#projectsDashboard .dashboard-toolbar input {
+  min-width: 0;
+}
