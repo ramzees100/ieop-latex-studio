@@ -361,6 +361,202 @@
     display: none;
   }
 }
+ /* Projects dashboard */
+#projectsDashboard {
+  min-height: 75vh;
+  background: #1c222b;
+  color: #edf1f7;
+}
+
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 75vh;
+}
+
+.dashboard-sidebar {
+  padding: 28px 18px;
+  border-right: 1px solid #374253;
+}
+
+.dashboard-sidebar h2 {
+  margin: 0 0 24px;
+  font-size: 18px;
+}
+
+.dashboard-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-sidebar button {
+  text-align: left;
+  padding: 14px 18px;
+}
+
+#projectsDashboard button {
+  background: #252e3b;
+  border-color: #46536a;
+  color: #edf1f7;
+}
+
+#projectsDashboard button:hover {
+  background: #354258;
+}
+
+#projectsDashboard button[aria-current="page"] {
+  background: #185c40;
+  border-color: #26805a;
+}
+
+#projectsDashboard .primary {
+  background: #078447;
+  border-color: #078447;
+  font-weight: bold;
+}
+
+#projectsDashboard .primary:hover {
+  background: #096c3d;
+}
+
+#projectsDashboard .hint {
+  margin-top: 28px;
+  color: #bac5d4;
+}
+
+.dashboard-content {
+  min-width: 0;
+  margin: 20px;
+  padding: 30px;
+  border-radius: 18px;
+  background: #2e394b;
+}
+
+#dashboardTitle {
+  margin: 0 0 28px;
+  font-size: 30px;
+}
+
+.dashboard-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+#dashboardSearch {
+  flex: 1;
+  min-width: 180px;
+  background: #1c222b;
+  border-color: #718096;
+  color: #edf1f7;
+}
+
+#dashboardSearch::placeholder {
+  color: #aebaca;
+}
+
+.dashboard-table-wrap {
+  overflow-x: auto;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1c222b;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #374253;
+}
+
+.dashboard-table th {
+  color: #cbd5e3;
+}
+
+.dashboard-table td:first-child {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-table td:last-child {
+  min-width: 150px;
+}
+
+.dashboard-table td button {
+  margin: 3px;
+}
+
+@media (max-width: 700px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #374253;
+  }
+
+  .dashboard-sidebar nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-content {
+    margin: 10px;
+    padding: 18px;
+  }
+}
+ #templateDialog {
+  width: min(560px, calc(100% - 32px));
+  max-height: 85vh;
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid #46536a;
+  border-radius: 16px;
+  background: #252e3b;
+  color: #edf1f7;
+}
+
+#templateDialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+
+#templateDialog h2 {
+  margin-top: 0;
+}
+
+#templateDialog p {
+  color: #cbd5e3;
+  line-height: 1.6;
+}
+
+.template-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.template-options button {
+  min-height: 76px;
+  background: #1c222b;
+  color: #edf1f7;
+  border-color: #46536a;
+}
+
+.template-options button:hover {
+  background: #185c40;
+}
+
+@media (max-width: 450px) {
+  .template-options {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
 </head>
 
@@ -369,7 +565,81 @@
   <h1>IEOP LaTeX Studio</h1>
   <p>A workspace for scientific writing</p>
 </header>
+ <section id="projectsDashboard" hidden>
+  <div class="dashboard-layout">
+    <aside class="dashboard-sidebar">
+      <h2>Workspace</h2>
 
+      <nav aria-label="Project categories">
+        <button id="showAllProjects" type="button">
+          All projects
+        </button>
+
+        <button id="showTrashProjects" type="button">
+          Trash
+        </button>
+      </nav>
+
+      <p class="hint">
+        Projects are currently saved in this browser.
+      </p>
+    </aside>
+
+    <section class="dashboard-content" aria-labelledby="dashboardTitle">
+      <h2 id="dashboardTitle">All projects</h2>
+
+      <div class="dashboard-toolbar">
+        <input
+          id="dashboardSearch"
+          type="search"
+          aria-label="Search projects"
+          placeholder="Search your projects..."
+        >
+
+        <button id="dashboardNewProject" class="primary" type="button">
+          New project
+        </button>
+      </div>
+
+      <div class="dashboard-table-wrap">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th scope="col">Project title</th>
+              <th scope="col">Files</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody id="dashboardProjectRows"></tbody>
+        </table>
+      </div>
+
+      <p id="dashboardEmpty" hidden>No projects found.</p>
+    </section>
+  </div>
+</section>
+ <dialog id="templateDialog" aria-labelledby="templateDialogTitle">
+  <h2 id="templateDialogTitle">Create a new project</h2>
+  <p>Choose a starting template. You can edit everything afterward.</p>
+
+  <div class="template-options">
+    <button type="button" data-template="blank">Blank document</button>
+    <button type="button" data-template="resume">Resume / CV</button>
+    <button type="button" data-template="book">Book</button>
+    <button type="button" data-template="article">Research article</button>
+  </div>
+
+  <form method="dialog">
+    <button type="submit">Cancel</button>
+  </form>
+</dialog>
+<div id="editorWorkspace">
+ <div class="toolbar">
+  <button id="backToProjects" type="button">
+    ← Back to projects
+  </button>
+</div>
 <div class="toolbar">
   <input id="projectName" aria-label="Project name" value="My first document">
   <button id="importButton">Upload files</button>
@@ -521,7 +791,7 @@
     </section>
   </main>
 </div>
-
+</div><!-- End editorWorkspace -->
 <footer>
   <div id="status" role="status" aria-live="polite">Workspace ready.</div>
   <div class="hint">
@@ -2712,7 +2982,299 @@ applyEditorFontSize();
     "Citation inserted. Ensure main.tex includes the bibliography file, then compile."
   );
 };
-init();
+ let dashboardCategory = "all";
+
+function renderDashboard() {
+  if (!state) return;
+
+  const showingTrash = dashboardCategory === "trash";
+  const query = $("dashboardSearch").value.trim().toLowerCase();
+
+  $("dashboardTitle").textContent = showingTrash
+    ? "Trash"
+    : "All projects";
+
+  $("showAllProjects").removeAttribute("aria-current");
+  $("showTrashProjects").removeAttribute("aria-current");
+
+  $(showingTrash ? "showTrashProjects" : "showAllProjects")
+    .setAttribute("aria-current", "page");
+
+  const projects = (showingTrash ? state.trash : state.projects)
+    .filter(project => project.name.toLowerCase().includes(query));
+
+  const rows = $("dashboardProjectRows");
+  rows.replaceChildren();
+
+  for (const project of projects) {
+    const row = document.createElement("tr");
+
+    const titleCell = document.createElement("td");
+    titleCell.textContent = project.name.trim() || "Untitled project";
+
+    const filesCell = document.createElement("td");
+    filesCell.textContent = String(project.files.length);
+
+    const actionsCell = document.createElement("td");
+    const action = document.createElement("button");
+    action.type = "button";
+    action.disabled = busy;
+    action.textContent = showingTrash ? "Restore" : "Open";
+
+    action.onclick = async () => {
+      if (busy) return;
+
+      if (showingTrash) {
+        await mutate(() => {
+          const index = state.trash.findIndex(
+            item => item.id === project.id
+          );
+
+          if (index < 0) return;
+
+          const restored = state.trash.splice(index, 1)[0];
+          state.projects.push(restored);
+        }, "Project restored.");
+
+        renderDashboard();
+        return;
+      }
+
+      await switchProject(project.id);
+
+      $("projectsDashboard").hidden = true;
+      $("editorWorkspace").hidden = false;
+
+      // Re-align the editor after revealing its panel.
+      requestAnimationFrame(() => {
+        syncEditorScroll();
+        $("projectName").focus();
+      });
+
+      window.scrollTo(0, 0);
+    };
+
+    actionsCell.appendChild(action);
+    row.append(titleCell, filesCell, actionsCell);
+    rows.appendChild(row);
+  }
+
+  $("dashboardEmpty").hidden = projects.length > 0;
+  $("dashboardEmpty").textContent = showingTrash
+    ? "No deleted projects found."
+    : "No projects found.";
+}
+
+async function showProjectsDashboard() {
+  if (busy || !state) return;
+
+  await persist();
+
+  renderDashboard();
+  $("editorWorkspace").hidden = true;
+  $("projectsDashboard").hidden = false;
+
+  window.scrollTo(0, 0);
+}
+
+$("dashboardSearch").addEventListener("input", renderDashboard);
+
+$("showAllProjects").onclick = () => {
+  dashboardCategory = "all";
+  renderDashboard();
+};
+
+$("showTrashProjects").onclick = () => {
+  dashboardCategory = "trash";
+  renderDashboard();
+};
+ const blankTemplate = String.raw`\documentclass[12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,graphicx}
+\usepackage[margin=1in]{geometry}
+
+\begin{document}
+
+% Start writing here.
+
+\end{document}`;
+
+const resumeTemplate = String.raw`\documentclass[11pt,letterpaper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=0.75in]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlist[itemize]{leftmargin=*,itemsep=3pt}
+
+\begin{document}
+
+\begin{center}
+{\LARGE\textbf{Your Name}}\\[6pt]
+Your Professional Title\\[4pt]
+City, State \textbullet{} Your Phone Number\\
+\href{mailto:you@example.com}{you@example.com}
+\end{center}
+
+\section*{Professional Summary}
+Write a short summary of your experience and skills.
+
+\section*{Experience}
+\textbf{Job Title} \hfill Start Date -- End Date\\
+Company Name, Location
+\begin{itemize}
+  \item Describe a responsibility or achievement.
+  \item Add a measurable result where possible.
+\end{itemize}
+
+\section*{Education}
+\textbf{Degree and Field}\\
+University Name \hfill Graduation Year
+
+\section*{Skills}
+List your relevant technical and professional skills.
+
+\section*{Projects}
+\textbf{Project Name}\\
+Describe your contribution and results.
+
+\end{document}`;
+
+const researchTemplate = String.raw`\documentclass[12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,graphicx}
+\usepackage[margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+
+\title{Your Article Title}
+\author{Your Name}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Summarize the purpose, methods, results, and conclusions.
+\end{abstract}
+
+\section{Introduction}
+Introduce your topic and relevant literature.
+A sample citation is \cite{maxwell1865}.
+
+\section{Methods}
+Explain your methods.
+
+\section{Results}
+Present your results.
+
+\section{Discussion}
+Explain the meaning and limitations of your findings.
+
+\section{Conclusion}
+Summarize your conclusions.
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}`;
+
+let creatingTemplateProject = false;
+
+function openTemplateChooser() {
+  if (!state || busy || creatingTemplateProject) return;
+
+  if (!$("templateDialog").open) {
+    $("templateDialog").showModal();
+  }
+}
+
+$("dashboardNewProject").onclick = openTemplateChooser;
+
+// The editor's New project button opens the same chooser.
+$("newProject").onclick = openTemplateChooser;
+
+for (const button of document.querySelectorAll(
+  "#templateDialog [data-template]"
+)) {
+  button.onclick = async () => {
+    if (busy || creatingTemplateProject) return;
+
+    const type = button.dataset.template;
+
+    const defaultNames = {
+      blank: "Untitled document",
+      resume: "My Resume",
+      book: "My Book",
+      article: "My Research Article"
+    };
+
+    const name = prompt("Project name:", defaultNames[type]);
+    if (!name?.trim()) return;
+
+    creatingTemplateProject = true;
+    $("templateDialog").close();
+
+    let createdId = null;
+
+    try {
+      await mutate(() => {
+        const source = type === "book"
+          ? bookMain
+          : type === "resume"
+            ? resumeTemplate
+            : type === "article"
+              ? researchTemplate
+              : blankTemplate;
+
+        const project = newProject(name.trim(), source);
+
+        if (type === "book") {
+          project.files.push(
+            textFile("chapters/chapter1.tex", chapter1),
+            textFile(
+              "chapters/chapter2.tex",
+              "\\chapter{Next Steps}\n\nWrite your second chapter here.\n"
+            ),
+            textFile("references.bib", refs)
+          );
+        } else if (type === "article") {
+          project.files.push(textFile("references.bib", refs));
+        }
+
+        validateProject(project);
+
+        state.projects.push(project);
+        state.activeId = project.id;
+        activePath = "main.tex";
+        createdId = project.id;
+      }, "Project created. You can start writing.");
+
+      if (createdId && state.activeId === createdId) {
+        $("projectsDashboard").hidden = true;
+        $("editorWorkspace").hidden = false;
+
+        requestAnimationFrame(() => {
+          syncEditorScroll();
+          $("editor").focus();
+        });
+
+        window.scrollTo(0, 0);
+      }
+    } finally {
+      creatingTemplateProject = false;
+    }
+  };
+}
+$("backToProjects").onclick = showProjectsDashboard;
+
+init().then(() => {
+  showProjectsDashboard();
+});
 </script>
 </body>
 </html>
