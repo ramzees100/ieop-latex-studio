@@ -254,15 +254,31 @@ async function readDB() {
       .get("state")
   );
 }
-
 function capture() {
   if (!state) return;
 
-  current().name = $("projectName").value;
+  const project = current();
   const file = selected();
+  let changed = false;
+
+  const name = $("projectName").value;
+
+  if (project.name !== name) {
+    project.name = name;
+    changed = true;
+  }
 
   if (file?.kind === "text") {
-    file.text = $("editor").value;
+    const source = $("editor").value;
+
+    if (file.text !== source) {
+      file.text = source;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    project.updatedAt = new Date().toISOString();
   }
 }
 
@@ -524,26 +540,40 @@ async function switchFile(path) {
   await persist();
 }
 
+function projectContent(project) {
+  return JSON.stringify({
+    name: project.name,
+    files: project.files,
+    deletedFiles: project.deletedFiles
+  });
+}
+
 async function mutate(action, notice) {
   if (busy) return;
-
   capture();
+
+  const previous = new Map(
+    [...state.projects, ...state.trash].map(project => [
+      project.id, projectContent(project)
+    ])
+  );
 
   try {
     action();
+    const now = new Date().toISOString();
+    for (const project of [...state.projects, ...state.trash]) {
+      if (previous.get(project.id) !== projectContent(project)) {
+        project.updatedAt = now;
+      }
+    }
+
     clearErrors();
     clearPDF();
-
     $("projectName").value = current().name;
     if (!selected()) activePath = "main.tex";
     showFile();
-
     const ok = await persist();
-
-    msg(
-      ok ? notice : "Changes are in memory only. Back up your projects.",
-      !ok
-    );
+    msg(ok ? notice : "Changes are in memory only. Back up your projects.", !ok);
   } catch (error) {
     msg(error.message, true);
   }
@@ -920,6 +950,9 @@ async function upload(fileList, isFolder) {
     }
 
     validateProject(next);
+    if (projectContent(project) !== projectContent(next)) {
+      project.updatedAt = new Date().toISOString();
+    }
     project.files = next.files;
     project.deletedFiles = next.deletedFiles;
 
@@ -2156,6 +2189,19 @@ function renderDashboard() {
     const filesCell = document.createElement("td");
     filesCell.textContent = String(project.files.length);
 
+    const modifiedCell = document.createElement("td");
+    const modifiedDate = typeof project.updatedAt === "string"
+      ? new Date(project.updatedAt) : null;
+    if (modifiedDate && Number.isFinite(modifiedDate.getTime())) {
+      modifiedCell.textContent = modifiedDate.toLocaleString(undefined, {
+        year: "numeric", month: "short", day: "numeric",
+        hour: "numeric", minute: "2-digit"
+      });
+      modifiedCell.title = modifiedDate.toISOString();
+    } else {
+      modifiedCell.textContent = "Unknown";
+    }
+
     const actionsCell = document.createElement("td");
     const action = document.createElement("button");
     action.type = "button";
@@ -2196,7 +2242,103 @@ function renderDashboard() {
     };
 
     actionsCell.appendChild(action);
-    row.append(titleCell, filesCell, actionsCell);
+   if (!showingTrash) {
+  const renameButton = document.createElement("button");
+  renameButton.type = "button";
+  renameButton.textContent = "Rename";
+  renameButton.disabled = busy;
+
+  renameButton.onclick = async () => {
+    if (busy) return;
+
+    const name = prompt("Project name:", project.name);
+    if (!name?.trim()) return;
+
+    await mutate(() => {
+      const target = state.projects.find(
+        item => item.id === project.id
+      );
+
+      if (!target) throw Error("Project no longer exists.");
+      target.name = name.trim();
+    }, "Project renamed.");
+
+    renderDashboard();
+  };
+
+  const duplicateButton = document.createElement("button");
+  duplicateButton.type = "button";
+  duplicateButton.textContent = "Duplicate";
+  duplicateButton.disabled = busy;
+
+  duplicateButton.onclick = async () => {
+    if (busy) return;
+
+    const name = prompt(
+      "Name for the copied project:",
+      project.name + " (copy)"
+    );
+
+    if (!name?.trim()) return;
+
+    await mutate(() => {
+      const target = state.projects.find(
+        item => item.id === project.id
+      );
+
+      if (!target) throw Error("Project no longer exists.");
+
+      const copy = structuredClone(target);
+      copy.id = uid();
+      copy.name = name.trim();
+
+      validateProject(copy);
+      state.projects.push(copy);
+    }, "Project duplicated.");
+
+    renderDashboard();
+  };
+
+  const trashButton = document.createElement("button");
+  trashButton.type = "button";
+  trashButton.textContent = "Move to Trash";
+  trashButton.disabled = busy;
+
+  trashButton.onclick = async () => {
+    if (busy) return;
+
+    if (!confirm('Move "' + project.name + '" to Trash?')) return;
+
+    await mutate(() => {
+      const index = state.projects.findIndex(
+        item => item.id === project.id
+      );
+
+      if (index < 0) throw Error("Project no longer exists.");
+
+      const removed = state.projects.splice(index, 1)[0];
+      state.trash.push(removed);
+
+      if (!state.projects.length) {
+        state.projects.push(newProject("Untitled project"));
+      }
+
+      if (state.activeId === removed.id) {
+        state.activeId = state.projects[0].id;
+        activePath = "main.tex";
+      }
+    }, "Project moved to Trash. You can restore it there.");
+
+    renderDashboard();
+  };
+
+  actionsCell.append(
+    renameButton,
+    duplicateButton,
+    trashButton
+  );
+}
+    row.append(titleCell, filesCell, modifiedCell, actionsCell);
     rows.appendChild(row);
   }
 
