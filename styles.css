@@ -548,3 +548,95 @@
     grid-template-columns: 1fr;
   }
 }
+/* Dashboard spacing and appearance */
+#projectsDashboard .dashboard-sidebar {
+  padding: 24px 18px;
+}
+
+#projectsDashboard .dashboard-content {
+  padding: 28px 32px;
+  border-radius: 18px;
+  min-width: 0;
+}
+
+#projectsDashboard #dashboardTitle {
+  margin: 0 0 24px;
+  font-size: 30px;
+}
+
+#projectsDashboard .dashboard-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+#projectsDashboard #dashboardSearch {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+#projectsDashboard #dashboardNewProject {
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+#projectsDashboard .dashboard-table-wrap {
+  overflow-x: auto;
+}
+
+#projectsDashboard .dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#projectsDashboard .dashboard-table th,
+#projectsDashboard .dashboard-table td {
+  padding: 14px 18px;
+  vertical-align: middle;
+}
+
+#projectsDashboard .dashboard-table th {
+  color: #b9c7d8;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+#projectsDashboard .dashboard-table td {
+  font-size: 14px;
+}
+
+#projectsDashboard .dashboard-table td:first-child {
+  font-weight: 600;
+}
+
+#projectsDashboard .dashboard-table td:nth-child(3) {
+  color: #b9c7d8;
+  font-size: 13px;
+}
+
+#projectsDashboard .dashboard-table tbody tr:hover {
+  background: #263343;
+}
+
+#projectsDashboard .dashboard-table td button {
+  margin: 3px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  #projectsDashboard .dashboard-content {
+    padding: 20px 16px;
+  }
+
+  #projectsDashboard #dashboardTitle {
+    font-size: 25px;
+  }
+}
