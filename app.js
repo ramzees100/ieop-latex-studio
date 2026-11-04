@@ -1,3 +1,2229 @@
+"use strict";
+
+const $ = id => document.getElementById(id);
+const API = "https://ieop-latex-compiler.onrender.com";
+const MB = 1024 * 1024;
+const MAX_FILE = 10 * MB;
+const MAX_TOTAL = 25 * MB;
+const MAX_COUNT = 200;
+const textExt = new Set(["tex", "bib", "bst", "sty", "cls"]);
+const extensions = new Set([...textExt, "png", "jpg", "jpeg", "pdf"]);
+const enc = new TextEncoder();
+
+// article is defined in templates.js.
+
+// bookMain is defined in templates.js.
+
+// chapter1 is defined in templates.js.
+
+// refs is defined in templates.js.
+
+let state, db;
+let activePath = "main.tex";
+let busy = false;
+let blocked = false;
+let storageOK = true;
+let pdfURL = null;
+let assetURL = null;
+let compiledSignature = null;
+ let compiledChapter = null;
+let saveTimer;
+let revision = 0;
+let saveQueue = Promise.resolve();
+
+const sessionId = crypto.randomUUID();
+const channel = typeof BroadcastChannel !== "undefined"
+  ? new BroadcastChannel("ieop-books-state")
+  : null;
+
+const uid = () => crypto.randomUUID();
+const textFile = (path, text) => ({ path, kind: "text", text });
+
+function newProject(name, source = article) {
+  return {
+    id: uid(),
+    name,
+    files: [textFile("main.tex", source)],
+    deletedFiles: []
+  };
+}
+
+function current() {
+  return state.projects.find(project => project.id === state.activeId);
+}
+
+function selected() {
+  return current().files.find(file => file.path === activePath);
+}
+
+function msg(text, error = false) {
+  $("status").textContent = text;
+  $("status").className = error ? "error" : "";
+}
+
+function ext(path) {
+  return path.split(".").pop().toLowerCase();
+}
+
+function validPath(path) {
+  if (
+    typeof path !== "string" ||
+    !path ||
+    path.length > 240 ||
+    /[\\:\x00-\x1f]/.test(path) ||
+    path.startsWith("/")
+  ) {
+    throw Error("Invalid file path.");
+  }
+
+  if (path.split("/").some(
+    part => !part || part === ".." ||
+            part.startsWith(".") || part === "__MACOSX"
+  )) {
+    throw Error("Hidden files and unsafe paths are not allowed.");
+  }
+
+  if (!extensions.has(ext(path))) {
+    throw Error("Unsupported file type: " + path);
+  }
+
+  if (path.toLowerCase() === "main.pdf") {
+    throw Error("main.pdf is reserved. Put PDF figures in an images folder.");
+  }
+
+  return path;
+}
+
+function bytes(file) {
+  if (file.kind === "text") return enc.encode(file.text);
+
+  const binary = atob(file.base64);
+  const out = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i++) {
+    out[i] = binary.charCodeAt(i);
+  }
+
+  return out;
+}
+
+function validateProject(project) {
+  if (
+    !project ||
+    typeof project.id !== "string" ||
+    typeof project.name !== "string" ||
+    !Array.isArray(project.files) ||
+    !project.files.length
+  ) {
+    throw Error("Invalid project.");
+  }
+
+  if (!Array.isArray(project.deletedFiles)) project.deletedFiles = [];
+
+  const names = new Set();
+  let total = 0;
+
+  for (const file of project.files) {
+    validPath(file.path);
+
+    const name = file.path.toLowerCase();
+    if (names.has(name)) throw Error("Duplicate file: " + file.path);
+    names.add(name);
+
+    if (file.kind === "text") {
+      if (typeof file.text !== "string" || !textExt.has(ext(file.path))) {
+        throw Error("Invalid text file.");
+      }
+    } else if (
+      file.kind !== "binary" ||
+      typeof file.base64 !== "string" ||
+      textExt.has(ext(file.path))
+    ) {
+      throw Error("Invalid binary file.");
+    }
+
+    const size = bytes(file).length;
+    if (size > MAX_FILE) throw Error("A file exceeds 10 MB.");
+    total += size;
+  }
+
+  if (project.files.length > MAX_COUNT || total > MAX_TOTAL) {
+    throw Error("Project exceeds 200 files or 25 MB.");
+  }
+
+  if (!project.files.some(
+    file => file.path === "main.tex" && file.kind === "text"
+  )) {
+    throw Error("Each project needs a text file named main.tex at the root.");
+  }
+
+  for (const file of project.files) {
+    if (project.files.some(
+      other => other !== file &&
+        other.path.toLowerCase().startsWith(file.path.toLowerCase() + "/")
+    )) {
+      throw Error("A file path is also used as a folder.");
+    }
+  }
+
+  for (const file of project.deletedFiles) {
+    validPath(file.path);
+
+    if (file.kind === "text") {
+      if (typeof file.text !== "string" || !textExt.has(ext(file.path))) {
+        throw Error("Invalid deleted text file.");
+      }
+    } else if (
+      file.kind !== "binary" ||
+      typeof file.base64 !== "string" ||
+      textExt.has(ext(file.path))
+    ) {
+      throw Error("Invalid deleted file.");
+    }
+
+    if (bytes(file).length > MAX_FILE) {
+      throw Error("Deleted file exceeds 10 MB.");
+    }
+  }
+
+  return project;
+}
+
+function normalize(raw) {
+  if (
+    !raw ||
+    !Array.isArray(raw.projects) ||
+    !raw.projects.length ||
+    !Array.isArray(raw.trash)
+  ) {
+    throw Error("Invalid backup.");
+  }
+
+  const result = structuredClone(raw);
+  const ids = new Set();
+
+  for (const project of [...result.projects, ...result.trash]) {
+    if (!project.files && typeof project.source === "string") {
+      project.files = [textFile("main.tex", project.source)];
+      project.deletedFiles = [];
+      delete project.source;
+    }
+
+    validateProject(project);
+
+    if (ids.has(project.id)) throw Error("Duplicate project ID.");
+    ids.add(project.id);
+  }
+
+  if (!result.projects.some(project => project.id === result.activeId)) {
+    result.activeId = result.projects[0].id;
+  }
+
+  result.version = 2;
+  return result;
+}
+
+function requestPromise(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("ieop-latex-books", 1);
+
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore("workspace");
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+
+    request.onblocked = () => {
+      reject(Error("Close other editor tabs and reload."));
+    };
+  });
+}
+
+async function readDB() {
+  return requestPromise(
+    db.transaction("workspace", "readonly")
+      .objectStore("workspace")
+      .get("state")
+  );
+}
+
+function capture() {
+  if (!state) return;
+
+  current().name = $("projectName").value;
+  const file = selected();
+
+  if (file?.kind === "text") {
+    file.text = $("editor").value;
+  }
+}
+
+function persist() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+
+  if (!state) return Promise.resolve(false);
+
+  capture();
+  const snapshot = structuredClone(state);
+
+  saveQueue = saveQueue.catch(() => false).then(() => new Promise(resolve => {
+    if (!db || blocked) {
+      storageOK = false;
+      resolve(false);
+      return;
+    }
+
+    try {
+      const transaction = db.transaction("workspace", "readwrite");
+      const store = transaction.objectStore("workspace");
+      let conflict = false;
+
+      const request = store.get("state");
+
+      request.onsuccess = () => {
+        const stored = request.result;
+
+        if ((stored?.revision || 0) !== revision) {
+          conflict = true;
+          transaction.abort();
+          return;
+        }
+
+        store.put({
+          revision: revision + 1,
+          state: snapshot
+        }, "state");
+      };
+
+      transaction.oncomplete = () => {
+        revision++;
+        storageOK = true;
+        channel?.postMessage({ sessionId });
+        resolve(true);
+      };
+
+      transaction.onabort = transaction.onerror = () => {
+        if (conflict) blocked = true;
+        storageOK = false;
+
+        msg(
+          conflict
+            ? "Another tab changed your projects. Download a backup, then reload. Saving is paused."
+            : "Browser saving failed. Download a backup before leaving.",
+          true
+        );
+
+        resolve(false);
+      };
+    } catch {
+      storageOK = false;
+      msg("Browser saving failed. Download a backup before leaving.", true);
+      resolve(false);
+    }
+  }));
+
+  return saveQueue;
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+
+  saveTimer = setTimeout(async () => {
+    const ok = await persist();
+    if (ok && !busy) msg("Saved on this device.");
+  }, 400);
+}
+
+function signature() {
+  return JSON.stringify(current().files);
+}
+
+function pdfState() {
+  const fresh = pdfURL && compiledSignature === signature();
+  $("pdfButton").disabled = !fresh || busy;
+  $("openPdf").hidden = !fresh;
+  let title = pdfURL && compiledChapter
+    ? "Chapter PDF — " + compiledChapter
+    : "PDF preview";
+  if (pdfURL && !fresh) title += " — changes need compilation";
+  $("previewTitle").textContent = title;
+}
+
+function clearErrors() {
+  $("compileErrors").hidden = true;
+  $("compileErrors").open = false;
+  $("compileErrorText").textContent = "";
+}
+
+function showError(message) {
+  $("compileErrorText").textContent = message;
+  $("compileErrors").hidden = false;
+  $("compileErrors").open = true;
+
+  msg("Compilation failed. See the error details below the editor.", true);
+
+  $("compileErrors").scrollIntoView({
+    behavior: "smooth",
+    block: "nearest"
+  });
+}
+
+function clearPDF() {
+  if (pdfURL) URL.revokeObjectURL(pdfURL);
+
+  pdfURL = null;
+  compiledSignature = null;
+  compiledChapter = null;
+
+  $("pdfViewer").removeAttribute("src");
+  $("pdfViewer").hidden = true;
+  $("emptyPreview").hidden = false;
+  $("openPdf").removeAttribute("href");
+
+  pdfState();
+}
+
+function renderList(id, items, selectedId, action, key) {
+  $(id).replaceChildren();
+
+  for (const item of items) {
+    const button = document.createElement("button");
+
+    button.textContent = key === "path"
+      ? item.path
+      : item.name.trim() || "Untitled project";
+
+    button.className =
+      (key === "path" ? "file-item" : "project-item") +
+      (item[key] === selectedId ? " selected" : "");
+
+    button.disabled = busy;
+
+    if (item[key] === selectedId) {
+      button.setAttribute("aria-current", "page");
+    }
+
+    button.onclick = () => action(item[key]);
+    $(id).appendChild(button);
+  }
+}
+
+function controls() {
+ $("insertCitation").disabled =
+  busy ||
+  selected()?.kind !== "text" ||
+  ext(activePath) !== "tex";
+ $("duplicateProject").disabled = busy;
+ $("compileChapterButton").disabled =
+  busy ||
+  selected()?.kind !== "text" ||
+  ext(activePath) !== "tex" ||
+  activePath === "main.tex";
+ $("refreshOutline").disabled = busy;
+refreshBookOutline();
+  const ids = [
+    "newProject", "newBook", "renameProject", "deleteProject",
+    "importProjects", "importButton", "folderButton", "newFile",
+    "renameFile", "deleteFile", "zipButton", "compileButton",
+    "addChapter", "insertFigure", "replaceOne", "replaceAll"
+  ];
+
+  for (const id of ids) $(id).disabled = busy;
+
+  $("projectName").disabled = busy;
+  $("editor").readOnly = busy;
+
+  $("restoreProject").disabled = busy || !state.trash.length;
+  $("restoreFile").disabled = busy || !current().deletedFiles.length;
+  $("renameFile").disabled = busy || activePath === "main.tex";
+  $("deleteFile").disabled = busy || activePath === "main.tex";
+
+  const isText = selected()?.kind === "text";
+  $("replaceOne").disabled = busy || !isText;
+  $("replaceAll").disabled = busy || !isText;
+  $("insertFigure").disabled = busy || !isText || ext(activePath) !== "tex";
+
+  renderList("projectList", state.projects, state.activeId, switchProject, "id");
+  renderList("fileList", current().files, activePath, switchFile, "path");
+  pdfState();
+}
+
+function showFile() {
+  const file = selected();
+  const isText = file.kind === "text";
+
+  $("fileTitle").textContent = file.path;
+  $("codeEditor").hidden = !isText;
+  $("editorPosition").hidden = !isText;
+  $("searchTools").hidden = !isText;
+  $("assetView").hidden = isText;
+  $("searchStatus").textContent = "";
+
+  if (assetURL) URL.revokeObjectURL(assetURL);
+  assetURL = null;
+
+  $("assetImage").hidden = true;
+  $("assetImage").removeAttribute("src");
+
+  if (isText) {
+    $("editor").value = file.text;
+    $("editor").scrollTop = 0;
+    $("editor").scrollLeft = 0;
+    renderEditor();
+  } else {
+    $("assetInfo").textContent =
+      file.path + " · " + (bytes(file).length / 1024).toFixed(1) + " KB";
+
+    if (["png", "jpg", "jpeg"].includes(ext(file.path))) {
+      assetURL = URL.createObjectURL(new Blob([bytes(file)]));
+      $("assetImage").src = assetURL;
+      $("assetImage").hidden = false;
+    }
+  }
+
+  controls();
+}
+
+async function switchProject(id) {
+  if (busy || id === state.activeId) return;
+
+  capture();
+  state.activeId = id;
+  activePath = "main.tex";
+  $("projectName").value = current().name;
+
+  clearErrors();
+  clearPDF();
+  showFile();
+
+  await persist();
+
+  msg(
+    storageOK
+      ? "Project opened. Compile to generate its PDF."
+      : "Project opened in memory. Back up your projects.",
+    !storageOK
+  );
+}
+
+async function switchFile(path) {
+  if (busy) return;
+
+  capture();
+  activePath = path;
+  showFile();
+  await persist();
+}
+
+async function mutate(action, notice) {
+  if (busy) return;
+
+  capture();
+
+  try {
+    action();
+    clearErrors();
+    clearPDF();
+
+    $("projectName").value = current().name;
+    if (!selected()) activePath = "main.tex";
+    showFile();
+
+    const ok = await persist();
+
+    msg(
+      ok ? notice : "Changes are in memory only. Back up your projects.",
+      !ok
+    );
+  } catch (error) {
+    msg(error.message, true);
+  }
+}
+
+function filename() {
+  return current().name.replace(/[^a-zA-Z0-9 _-]/g, "").trim() || "project";
+}
+
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+function crc32(data) {
+  let crc = 0xffffffff;
+
+  for (const byte of data) {
+    crc ^= byte;
+
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
+  }
+
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function makeZIP(files) {
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+  let centralSize = 0;
+
+  for (const file of files) {
+    const name = enc.encode(file.path);
+    const data = bytes(file);
+    const crc = crc32(data);
+
+    const head = new Uint8Array(30);
+    const h = new DataView(head.buffer);
+
+    h.setUint32(0, 0x04034b50, true);
+    h.setUint16(4, 20, true);
+    h.setUint16(6, 0x800, true);
+    h.setUint16(12, 33, true);
+    h.setUint32(14, crc, true);
+    h.setUint32(18, data.length, true);
+    h.setUint32(22, data.length, true);
+    h.setUint16(26, name.length, true);
+
+    chunks.push(head, name, data);
+
+    const record = new Uint8Array(46);
+    const d = new DataView(record.buffer);
+
+    d.setUint32(0, 0x02014b50, true);
+    d.setUint16(4, 20, true);
+    d.setUint16(6, 20, true);
+    d.setUint16(8, 0x800, true);
+    d.setUint16(14, 33, true);
+    d.setUint32(16, crc, true);
+    d.setUint32(20, data.length, true);
+    d.setUint32(24, data.length, true);
+    d.setUint16(28, name.length, true);
+    d.setUint32(42, offset, true);
+
+    central.push(record, name);
+    centralSize += 46 + name.length;
+    offset += 30 + name.length + data.length;
+  }
+
+  const end = new Uint8Array(22);
+  const e = new DataView(end.buffer);
+
+  e.setUint32(0, 0x06054b50, true);
+  e.setUint16(8, files.length, true);
+  e.setUint16(10, files.length, true);
+  e.setUint32(12, centralSize, true);
+  e.setUint32(16, offset, true);
+
+  return new Blob([...chunks, ...central, end], {
+    type: "application/zip"
+  });
+}
+ async function compile(chapterOnly = false) {
+  if (busy) return;
+
+  clearErrors();
+  capture();
+
+  const token = $("token").value.trim();
+
+  if (!token) {
+    msg("Enter your compiler token first.", true);
+    $("token").focus();
+    return;
+  }
+
+  let zip;
+
+  try {
+    validateProject(current());
+
+    if (!current().files.find(file => file.path === "main.tex").text.trim()) {
+      throw Error("main.tex is empty.");
+    }
+
+ const filesToCompile = structuredClone(current().files);
+
+if (chapterOnly) {
+  if (
+    selected()?.kind !== "text" ||
+    ext(activePath) !== "tex" ||
+    activePath === "main.tex"
+  ) {
+    throw Error("Open a chapter .tex file first.");
+  }
+
+  const main = filesToCompile.find(file => file.path === "main.tex");
+  const chapterPath = activePath.slice(0, -4);
+
+  if (!/^[a-zA-Z0-9_./-]+$/.test(chapterPath)) {
+    throw Error("Chapter filenames must use letters, numbers, underscores, or hyphens.");
+  }
+
+  // Hide comments while preserving character positions.
+  const visibleSource = main.text.split("\n").map(line => {
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] !== "%") continue;
+
+      let backslashes = 0;
+
+      for (let j = i - 1; j >= 0 && line[j] === "\\"; j--) {
+        backslashes++;
+      }
+
+      if (backslashes % 2 === 0) {
+        return line.slice(0, i) + " ".repeat(line.length - i);
+      }
+    }
+
+    return line;
+  }).join("\n");
+
+  const includedChapters = Array.from(
+    visibleSource.matchAll(/\\include\s*\{([^}]+)\}/g),
+    match => match[1].trim().replace(/^\.\//, "").replace(/\.tex$/, "")
+  );
+
+  if (!includedChapters.includes(chapterPath)) {
+    throw Error(
+      "This file must be included directly in main.tex using " +
+      "\\include{" + chapterPath + "}."
+    );
+  }
+
+  if (/\\includeonly\b/.test(visibleSource)) {
+    throw Error(
+      "main.tex already contains \\includeonly. Remove it before using this button."
+    );
+  }
+
+  const documentStart = visibleSource.search(/\\begin\s*\{document\}/);
+
+  if (documentStart < 0) {
+    throw Error("main.tex needs \\begin{document}.");
+  }
+
+  main.text =
+    main.text.slice(0, documentStart) +
+    "\\includeonly{" + chapterPath + "}\n" +
+    main.text.slice(documentStart);
+}
+
+zip = makeZIP(filesToCompile);
+
+    if (zip.size > 14 * MB) {
+      throw Error("Project ZIP exceeds 14 MB. Reduce image sizes before compiling.");
+    }
+  } catch (error) {
+    showError(error.message);
+    return;
+  }
+
+  const snapshot = signature();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 150000);
+
+  busy = true;
+  controls();
+  $("compileButton").textContent = "Compiling…";
+
+  try {
+    await persist();
+
+    msg("Connecting to the compiler. An idle server may need a minute to wake up.");
+
+    const health = await fetch(API + "/", {
+      signal: controller.signal,
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "error"
+    });
+
+    if (!health.ok) throw Error("Compiler is not ready.");
+
+    const capabilities = await health.json();
+
+    if (!capabilities.supports?.includes("zip-project")) {
+      throw Error("Render is running the old compiler. Deploy the updated app.py first.");
+    }
+
+    const form = new FormData();
+    form.append("project", zip, "project.zip");
+
+    msg("Compiling all project files…");
+
+    const response = await fetch(API + "/compile", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token },
+      body: form,
+      signal: controller.signal,
+      credentials: "omit",
+      redirect: "error"
+    });
+
+    if (!response.ok) {
+      let detail = {};
+
+      try {
+        detail = await response.json();
+      } catch {}
+
+      throw Error(
+        response.status === 401
+          ? "Access denied. Check your token."
+          : detail.error || "Compiler returned HTTP " + response.status
+      );
+    }
+
+    if (!(response.headers.get("Content-Type") || "").includes("application/pdf")) {
+      throw Error("The server did not return a PDF.");
+    }
+
+    const blob = await response.blob();
+    if (!blob.size) throw Error("The PDF is empty.");
+
+    clearPDF();
+    pdfURL = URL.createObjectURL(blob);
+    compiledSignature = snapshot;
+   compiledChapter = chapterOnly ? activePath : null;
+
+    $("pdfViewer").src = pdfURL;
+    $("pdfViewer").hidden = false;
+    $("emptyPreview").hidden = true;
+    $("openPdf").href = pdfURL;
+
+    msg(
+      storageOK
+        ? "PDF compiled. Download PDF or Open PDF to view it."
+        : "PDF compiled. Browser saving failed; download a backup.",
+      !storageOK
+    );
+  } catch (error) {
+    showError(
+      error.name === "AbortError"
+        ? "Request timed out. Check Render, then try again."
+        : error.message || "Could not reach the compiler."
+    );
+  } finally {
+    clearTimeout(timer);
+    busy = false;
+    $("compileButton").textContent = "Compile";
+    controls();
+  }
+}
+
+function base64(data) {
+  let result = "";
+
+  for (let i = 0; i < data.length; i += 32768) {
+    result += String.fromCharCode(...data.subarray(i, i + 32768));
+  }
+
+  return btoa(result);
+}
+
+async function upload(fileList, isFolder) {
+  if (busy || !fileList.length) return;
+
+  capture();
+  busy = true;
+  controls();
+
+  try {
+    const incoming = Array.from(fileList);
+
+    if (incoming.length > MAX_COUNT) {
+      throw Error("Select no more than 200 files.");
+    }
+
+    const additions = [];
+    const seen = new Set();
+
+    for (const file of incoming) {
+      let path = isFolder
+        ? file.webkitRelativePath.split("/").slice(1).join("/")
+        : file.name;
+
+      if (!isFolder && ["png", "jpg", "jpeg", "pdf"].includes(ext(path))) {
+        path = "images/" + path;
+      }
+
+      validPath(path);
+
+      if (seen.has(path.toLowerCase())) {
+        throw Error("Duplicate upload path: " + path);
+      }
+
+      seen.add(path.toLowerCase());
+
+      if (file.size > MAX_FILE) {
+        throw Error("File exceeds 10 MB: " + path);
+      }
+
+      const data = new Uint8Array(await file.arrayBuffer());
+
+      additions.push(
+        textExt.has(ext(path))
+          ? textFile(path, new TextDecoder("utf-8", { fatal: true }).decode(data))
+          : { path, kind: "binary", base64: base64(data) }
+      );
+    }
+
+    const project = current();
+    const next = structuredClone(project);
+
+    const collisions = additions.filter(file =>
+      project.files.some(other =>
+        other.path.toLowerCase() === file.path.toLowerCase()
+      )
+    );
+
+    if (
+      collisions.length &&
+      !confirm(
+        "Replace " + collisions.length +
+        " existing file(s)? Previous versions are kept in deleted files."
+      )
+    ) {
+      return;
+    }
+
+    for (const file of additions) {
+      const old = next.files.find(other =>
+        other.path.toLowerCase() === file.path.toLowerCase()
+      );
+
+      if (old) {
+        next.deletedFiles.push(old);
+        next.files = next.files.filter(other => other !== old);
+      }
+
+      next.files.push(file);
+    }
+
+    validateProject(next);
+    project.files = next.files;
+    project.deletedFiles = next.deletedFiles;
+
+    if (!selected()) activePath = "main.tex";
+
+    clearErrors();
+    clearPDF();
+    showFile();
+
+    const ok = await persist();
+
+    msg(
+      ok
+        ? "Files uploaded. Compile main.tex to include referenced files."
+        : "Files loaded in memory only. Download a project ZIP or backup now.",
+      !ok
+    );
+  } catch (error) {
+    msg("Upload failed: " + error.message, true);
+  } finally {
+    busy = false;
+    controls();
+  }
+}
+
+function escapeLatex(text) {
+  return text.replace(/[\\{}$&#%_^~]/g, character => ({
+    "\\": "\\textbackslash{}",
+    "{": "\\{",
+    "}": "\\}",
+    "$": "\\$",
+    "&": "\\&",
+    "#": "\\#",
+    "%": "\\%",
+    "_": "\\_",
+    "^": "\\textasciicircum{}",
+    "~": "\\textasciitilde{}"
+  })[character]);
+}
+
+function addProject(book) {
+  if (busy) return;
+
+  const name = prompt("Project name:", book ? "My Book" : "Untitled project");
+  if (!name?.trim()) return;
+
+  mutate(() => {
+    const project = newProject(name.trim(), book ? bookMain : article);
+
+    if (book) {
+      project.files.push(
+        textFile("chapters/chapter1.tex", chapter1),
+        textFile(
+          "chapters/chapter2.tex",
+          "\\chapter{Next Steps}\nWrite your second chapter here.\n"
+        ),
+        textFile("references.bib", refs)
+      );
+    }
+
+    state.projects.push(project);
+    state.activeId = project.id;
+    activePath = "main.tex";
+  }, book ? "Book created with two chapters and references." : "Project created.");
+}
+
+$("newProject").onclick = () => addProject(false);
+$("newBook").onclick = () => addProject(true);
+
+$("addChapter").onclick = () => {
+  if (busy) return;
+
+  const title = prompt("Chapter title:", "New Chapter");
+  if (!title?.trim()) return;
+
+  mutate(() => {
+    const project = structuredClone(current());
+    const main = project.files.find(file => file.path === "main.tex");
+
+    if (!/\\documentclass(?:\[[^\]]*\])?\{(?:book|report)\}/.test(main.text)) {
+      throw Error("Open a book or report project before adding a chapter.");
+    }
+
+    let number = 1;
+    let path;
+
+    do {
+      path = `chapters/chapter${number++}.tex`;
+    } while (
+      [...project.files, ...project.deletedFiles].some(
+        file => file.path.toLowerCase() === path.toLowerCase()
+      )
+    );
+
+    const include = `\\include{${path.slice(0, -4)}}`;
+    const marker = /^[ \t]*\\backmatter\b/m.test(main.text)
+      ? /^[ \t]*\\backmatter\b/m
+      : /^[ \t]*\\end\{document\}/m;
+
+    if (!marker.test(main.text)) {
+      throw Error("main.tex needs an \\end{document} line.");
+    }
+
+    main.text = main.text.replace(
+      marker,
+      match => `${include}\n\n${match}`
+    );
+
+    project.files.push(textFile(
+      path,
+      `\\chapter{${escapeLatex(title.trim())}}\n\nWrite your chapter here.\n`
+    ));
+
+    validateProject(project);
+    current().files = project.files;
+    activePath = path;
+  }, "Chapter added. Write your text, then click Compile.");
+};
+
+$("renameProject").onclick = () => {
+  if (busy) return;
+
+  const name = prompt("Project name:", current().name);
+
+  if (name?.trim()) {
+    mutate(() => current().name = name.trim(), "Project renamed.");
+  }
+};
+
+$("deleteProject").onclick = () => {
+  if (busy || !confirm("Move this project to deleted projects?")) return;
+
+  mutate(() => {
+    const old = current();
+
+    state.trash.push(old);
+    state.projects = state.projects.filter(project => project.id !== old.id);
+
+    if (!state.projects.length) {
+      state.projects.push(newProject("Untitled project"));
+    }
+
+    state.activeId = state.projects[0].id;
+    activePath = "main.tex";
+  }, "Project moved to deleted projects.");
+};
+
+$("restoreProject").onclick = () => mutate(() => {
+  if (!state.trash.length) return;
+
+  const project = state.trash.pop();
+  state.projects.push(project);
+  state.activeId = project.id;
+  activePath = "main.tex";
+}, "Project restored.");
+
+$("newFile").onclick = () => {
+  if (busy) return;
+
+  const path = prompt(
+    "Text file path (for example chapters/chapter3.tex):",
+    "chapters/chapter3.tex"
+  );
+
+  if (!path) return;
+
+  mutate(() => {
+    validPath(path);
+
+    if (!textExt.has(ext(path))) {
+      throw Error("Create a text file here; use Upload files for images.");
+    }
+
+    const project = structuredClone(current());
+    project.files.push(textFile(path, ""));
+    validateProject(project);
+
+    current().files = project.files;
+    activePath = path;
+  }, "File created. Reference it from main.tex to include it in compilation.");
+};
+
+$("renameFile").onclick = () => {
+  if (busy || activePath === "main.tex") return;
+
+  const path = prompt("New file path:", activePath);
+  if (!path) return;
+
+  mutate(() => {
+    validPath(path);
+
+    if (ext(path) !== ext(activePath)) {
+      throw Error("Keep the same file extension.");
+    }
+
+    const project = structuredClone(current());
+    project.files.find(file => file.path === activePath).path = path;
+    validateProject(project);
+
+    current().files = project.files;
+    activePath = path;
+  }, "File renamed. Update any LaTeX references to its old path.");
+};
+
+$("deleteFile").onclick = () => {
+  if (busy || activePath === "main.tex") return;
+  if (!confirm("Delete " + activePath + "? You can restore it.")) return;
+
+  mutate(() => {
+    const project = current();
+
+    project.deletedFiles.push(selected());
+    project.files = project.files.filter(file => file.path !== activePath);
+    activePath = "main.tex";
+  }, "File deleted. Update references or restore it before compiling.");
+};
+
+$("restoreFile").onclick = () => mutate(() => {
+  const project = current();
+  const file = project.deletedFiles.at(-1);
+
+  if (!file) return;
+
+  const next = structuredClone(project);
+
+  if (next.files.some(other =>
+    other.path.toLowerCase() === file.path.toLowerCase()
+  )) {
+    throw Error(
+      "Rename the existing file at " + file.path +
+      " before restoring this version."
+    );
+  }
+
+  next.files.push(file);
+  next.deletedFiles.pop();
+  validateProject(next);
+
+  project.files = next.files;
+  project.deletedFiles = next.deletedFiles;
+  activePath = file.path;
+}, "File restored.");
+
+$("editor").oninput = () => {
+  renderEditor();
+  capture();
+  scheduleSave();
+  pdfState();
+
+  msg(
+    storageOK && !blocked
+      ? "Changes pending save…"
+      : "Saving unavailable. Back up before leaving.",
+    !storageOK || blocked
+  );
+};
+
+$("projectName").oninput = () => {
+  capture();
+  scheduleSave();
+};
+
+$("editor").onkeydown = event => {
+  if (busy) return;
+
+  if (event.key === "Tab") {
+    event.preventDefault();
+
+    $("editor").setRangeText(
+      "  ",
+      $("editor").selectionStart,
+      $("editor").selectionEnd,
+      "end"
+    );
+
+    $("editor").oninput();
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    compile();
+  }
+};
+
+ $("compileButton").onclick = () => compile(false);
+$("compileChapterButton").onclick = () => compile(true);
+
+$("clearToken").onclick = () => {
+  $("token").value = "";
+  msg("Token cleared. A request already sent will continue.");
+};
+
+$("sourceButton").onclick = $("downloadAsset").onclick = () => {
+  capture();
+  const file = selected();
+
+  download(
+    new Blob([bytes(file)]),
+    file.path.split("/").pop()
+  );
+};
+
+$("pdfButton").onclick = () => {
+  if (pdfURL && compiledSignature === signature()) {
+    const link = document.createElement("a");
+    link.href = pdfURL;
+    link.download = filename() + ".pdf";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+};
+
+$("zipButton").onclick = () => {
+  capture();
+
+  try {
+    validateProject(current());
+    download(makeZIP(current().files), filename() + ".zip");
+  } catch (error) {
+    msg(error.message, true);
+  }
+};
+
+$("importButton").onclick = () => $("fileInput").click();
+$("folderButton").onclick = () => $("folderInput").click();
+
+$("fileInput").onchange = async event => {
+  await upload(event.target.files, false);
+  event.target.value = "";
+};
+
+$("folderInput").onchange = async event => {
+  await upload(event.target.files, true);
+  event.target.value = "";
+};
+
+$("backupProjects").onclick = () => {
+  capture();
+
+  download(
+    new Blob([JSON.stringify(state)], { type: "application/json" }),
+    "ieop-projects-backup.json"
+  );
+};
+
+$("importProjects").onclick = () => $("backupInput").click();
+
+$("backupInput").onchange = async event => {
+  if (busy) return;
+
+  const file = event.target.files[0];
+  if (!file) return;
+
+  capture();
+  busy = true;
+  controls();
+
+  try {
+    if (file.size > 100 * MB) {
+      throw Error("Backup exceeds 100 MB.");
+    }
+
+    const data = normalize(JSON.parse(await file.text()));
+
+    for (const project of data.projects) {
+      project.id = uid();
+      project.name += " (imported)";
+      state.projects.push(project);
+    }
+
+    for (const project of data.trash) {
+      project.id = uid();
+      state.trash.push(project);
+    }
+
+    const ok = await persist();
+
+    msg(
+      ok
+        ? "Backup imported; existing projects kept."
+        : "Backup imported in memory only. Saving unavailable.",
+      !ok
+    );
+  } catch (error) {
+    msg(error.message, true);
+  } finally {
+    busy = false;
+    event.target.value = "";
+    controls();
+  }
+};
+
+function escapeCode(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function highlightSource(source) {
+  const tokens = /(%[^\n]*|\\(?:[a-zA-Z@]+\*?|[^\n])|@[a-zA-Z]+|[{}\[\]]|\$\$?)/g;
+
+  let out = "";
+  let last = 0;
+
+  for (const match of source.matchAll(tokens)) {
+    out += escapeCode(source.slice(last, match.index));
+
+    const token = match[0];
+    const type = token[0] === "%" ? "comment"
+      : token[0] === "\\" ? "command"
+      : token[0] === "@" ? "entry"
+      : token[0] === "$" ? "math"
+      : "brace";
+
+    out += '<span class="tok-' + type + '">' + escapeCode(token) + "</span>";
+    last = match.index + token.length;
+  }
+
+  return out + escapeCode(source.slice(last)) + "\n";
+}
+
+function syncEditorScroll() {
+  const editor = $("editor");
+
+  $("highlight").scrollTop = editor.scrollTop;
+  $("highlight").scrollLeft = editor.scrollLeft;
+  $("lineNumbers").scrollTop = editor.scrollTop;
+}
+
+function updatePosition() {
+  const editor = $("editor");
+  const before = editor.value.slice(0, editor.selectionStart);
+  const lines = before.split("\n");
+
+  $("editorPosition").textContent =
+    "Line " + lines.length + ", column " + (lines.at(-1).length + 1);
+}
+
+function renderEditor() {
+  const source = $("editor").value;
+
+  $("highlight").innerHTML = highlightSource(source);
+  $("lineNumbers").textContent = Array.from(
+    { length: source.split("\n").length },
+    (_, index) => index + 1
+  ).join("\n") + "\n";
+
+  syncEditorScroll();
+  updatePosition();
+}
+
+$("editor").addEventListener("scroll", syncEditorScroll);
+
+for (const event of ["click", "keyup", "select", "input"]) {
+  $("editor").addEventListener(event, updatePosition);
+}
+
+function canSearch() {
+  return state && selected()?.kind === "text";
+}
+
+function findNextMatch() {
+  const editor = $("editor");
+  const query = $("findText").value;
+
+  if (!canSearch()) {
+    $("searchStatus").textContent = "Open a text file first.";
+    return;
+  }
+
+  if (!query) {
+    $("searchStatus").textContent = "Enter text to find.";
+    $("findText").focus();
+    return;
+  }
+
+  let index = editor.value.indexOf(query, editor.selectionEnd);
+
+  if (index < 0) index = editor.value.indexOf(query);
+
+  if (index < 0) {
+    $("searchStatus").textContent = "No matches.";
+    return;
+  }
+
+  editor.focus();
+  editor.setSelectionRange(index, index + query.length);
+
+  const before = editor.value.slice(0, index);
+  const line = before.split("\n").length;
+  const column = index - before.lastIndexOf("\n") - 1;
+ editor.scrollTop = Math.max(0, (line - 3) * editorLineHeight());
+  editor.scrollLeft = Math.max(0, column * 8.5 - 40);
+
+  syncEditorScroll();
+  updatePosition();
+
+  $("searchStatus").textContent = "Match on line " + line + ".";
+}
+
+$("findNext").onclick = findNextMatch;
+
+$("replaceOne").onclick = () => {
+  if (busy || !canSearch()) return;
+
+  const editor = $("editor");
+  const query = $("findText").value;
+
+  if (!query) {
+    findNextMatch();
+    return;
+  }
+
+  const selection = editor.value.slice(
+    editor.selectionStart,
+    editor.selectionEnd
+  );
+
+  if (selection !== query) {
+    findNextMatch();
+    return;
+  }
+
+  editor.setRangeText(
+    $("replaceText").value,
+    editor.selectionStart,
+    editor.selectionEnd,
+    "end"
+  );
+
+  editor.oninput();
+  findNextMatch();
+};
+
+$("replaceAll").onclick = () => {
+  if (busy || !canSearch()) return;
+
+  const editor = $("editor");
+  const query = $("findText").value;
+
+  if (!query) {
+    findNextMatch();
+    return;
+  }
+
+  const parts = editor.value.split(query);
+  const count = parts.length - 1;
+
+  if (!count) {
+    $("searchStatus").textContent = "No matches.";
+    return;
+  }
+
+  if (!confirm("Replace all " + count + " matches in this file?")) return;
+
+  editor.value = parts.join($("replaceText").value);
+  editor.oninput();
+
+  $("searchStatus").textContent = count + " matches replaced.";
+};
+
+$("findText").addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    findNextMatch();
+  }
+});
+
+$("findText").addEventListener("input", () => {
+  $("searchStatus").textContent = "";
+});
+
+$("editor").addEventListener("keydown", event => {
+  if (
+    (event.ctrlKey || event.metaKey) &&
+    event.key.toLowerCase() === "f"
+  ) {
+    event.preventDefault();
+    $("findText").focus();
+    $("findText").select();
+  }
+});
+
+$("insertFigure").onclick = () => {
+  if (busy) return;
+
+  if (!state || selected()?.kind !== "text" || ext(activePath) !== "tex") {
+    msg("Open a .tex file where you want the figure.", true);
+    return;
+  }
+
+  const images = current().files.filter(
+    file => ["png", "jpg", "jpeg", "pdf"].includes(ext(file.path))
+  );
+
+  if (!images.length) {
+    msg("Use Upload files to upload an image first.", true);
+    return;
+  }
+
+  const choices = images.map(
+    (file, index) => `${index + 1}. ${file.path}`
+  ).join("\n");
+
+  const answer = prompt(
+    "Choose an image by entering its number:\n\n" + choices,
+    "1"
+  );
+
+  if (answer === null) return;
+
+  const number = Number(answer);
+
+  if (!Number.isInteger(number) || number < 1 || number > images.length) {
+    msg("Enter a valid image number.", true);
+    return;
+  }
+
+  const path = images[number - 1].path;
+
+  if (!/^[a-zA-Z0-9_./-]+$/.test(path)) {
+    msg(
+      "Rename the image using letters, numbers, hyphens, or underscores before inserting it.",
+      true
+    );
+    return;
+  }
+
+  const caption = prompt("Figure caption:", "Describe your figure.");
+  if (caption === null) return;
+
+  const baseLabel = "fig:" + path
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-");
+
+  const allSource = current().files
+    .filter(file => file.kind === "text")
+    .map(file => file.text)
+    .join("\n") + "\n" + $("editor").value;
+
+  let label = baseLabel;
+  let suffix = 2;
+
+  while (allSource.includes("\\label{" + label + "}")) {
+    label = baseLabel + "-" + suffix++;
+  }
+
+  const code = [
+    "",
+    "\\begin{figure}[htbp]",
+    "  \\centering",
+    `  \\includegraphics[width=0.8\\textwidth]{${path}}`,
+    `  \\caption{${escapeLatex(caption)}}`,
+    `  \\label{${label}}`,
+    "\\end{figure}",
+    ""
+  ].join("\n");
+
+  const editor = $("editor");
+
+  editor.setRangeText(
+    code,
+    editor.selectionStart,
+    editor.selectionEnd,
+    "end"
+  );
+
+  editor.oninput();
+  editor.focus();
+
+  msg("Figure inserted. Ensure main.tex loads \\usepackage{graphicx}, then compile.");
+};
+
+if (channel) {
+  channel.onmessage = event => {
+    if (event.data.sessionId !== sessionId) {
+      blocked = true;
+      storageOK = false;
+
+      msg(
+        "Projects changed in another tab. Back up this tab, then reload. Saving is paused.",
+        true
+      );
+    }
+  };
+}
+
+window.addEventListener("beforeunload", event => {
+  if (saveTimer || !storageOK) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
+});
+
+window.addEventListener("pagehide", () => {
+  $("token").value = "";
+});
+
+async function init() {
+  document.querySelectorAll("button,input,textarea").forEach(
+    element => element.disabled = true
+  );
+
+  try {
+    db = await openDB();
+
+    db.onversionchange = () => {
+      db.close();
+      blocked = true;
+      storageOK = false;
+      msg("Storage changed in another tab. Back up your work and reload.", true);
+    };
+
+    const record = await readDB();
+    revision = record?.revision || 0;
+
+    if (record) {
+      state = normalize(record.state);
+    } else {
+      const previous = localStorage.getItem("ieop-latex-studio-projects-v1");
+
+      if (previous !== null) {
+        state = normalize(JSON.parse(previous));
+      } else {
+        const old = JSON.parse(
+          localStorage.getItem("ieop-latex-studio-v1") || "null"
+        );
+
+        const project = newProject(
+          old?.name || "My first document",
+          typeof old?.source === "string" ? old.source : article
+        );
+
+        state = {
+          version: 2,
+          projects: [project],
+          trash: [],
+          activeId: project.id
+        };
+      }
+    }
+  } catch {
+    blocked = true;
+    storageOK = false;
+
+    const project = newProject("Recovery workspace");
+
+    state = {
+      version: 2,
+      projects: [project],
+      trash: [],
+      activeId: project.id
+    };
+
+    msg(
+      "Storage could not be opened. Existing data was not overwritten. You can import a backup and work in memory.",
+      true
+    );
+  }
+
+  $("projectName").value = current().name;
+
+  document.querySelectorAll("button,input,textarea").forEach(
+    element => element.disabled = false
+  );
+
+  showFile();
+
+  if (!blocked) {
+    const ok = await persist();
+
+    msg(
+      ok
+        ? "Projects ready. Open a project or create a new one."
+        : "Saving unavailable. Back up before leaving.",
+      !ok
+    );
+  }
+}
+function refreshBookOutline() {
+  if (!state) return;
+
+  capture();
+
+  const outline = $("bookOutline");
+  outline.replaceChildren();
+
+  // Scan main.tex first, followed by the other LaTeX files.
+  const files = current().files
+    .filter(file => file.kind === "text" && ext(file.path) === "tex")
+    .sort((a, b) => {
+      if (a.path === "main.tex") return -1;
+      if (b.path === "main.tex") return 1;
+      return a.path.localeCompare(b.path, undefined, { numeric: true });
+    });
+
+  let count = 0;
+
+  for (const file of files) {
+    const lines = file.text.split("\n");
+    let offset = 0;
+
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
+
+      // Supports ordinary headings written on a single line.
+      const heading = line.match(
+        /^[ \t]*\\(chapter|section|subsection)\*?(?:\[[^\]]*\])?\{([^{}]+)\}/
+      );
+
+      if (heading) {
+        const position = offset;
+        const lineNumber = index + 1;
+        const path = file.path;
+        const level = heading[1];
+        const title = heading[2];
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "file-item";
+        button.textContent = title;
+        button.title = `${path}, line ${lineNumber}`;
+        button.disabled = busy;
+
+        button.style.paddingLeft = level === "chapter"
+          ? "8px"
+          : level === "section" ? "18px" : "28px";
+
+        if (level === "chapter") {
+          button.style.fontWeight = "bold";
+        }
+
+        button.onclick = async () => {
+          if (busy) return;
+
+          await switchFile(path);
+
+          const editor = $("editor");
+          editor.focus();
+          editor.setSelectionRange(position, position);
+          editor.scrollTop = Math.max(0, (lineNumber - 3) * editorLineHeight());
+          editor.scrollLeft = 0;
+
+          syncEditorScroll();
+          updatePosition();
+        };
+
+        outline.appendChild(button);
+        count++;
+      }
+
+      offset += line.length + 1;
+    }
+  }
+
+  if (!count) {
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.textContent = "No chapter or section headings found.";
+    outline.appendChild(note);
+  }
+}
+
+$("refreshOutline").onclick = () => {
+  if (!busy) refreshBookOutline();
+};
+ const panelDivider = $("panelDivider");
+const panelLayout = document.querySelector("main");
+const desktopPanels = window.matchMedia("(min-width: 1101px)");
+ let editorShare = 50;
+
+try {
+  const savedShare = localStorage.getItem("ieop-editor-panel-share");
+
+  if (savedShare !== null) {
+    const value = Number(savedShare);
+
+    if (Number.isFinite(value) && value >= 25 && value <= 75) {
+      editorShare = value;
+    }
+  }
+} catch {
+  // Keep equal panel widths if storage is unavailable.
+}
+let resizingPointer = null;
+
+function setPanelShare(value) {
+  editorShare = Math.max(25, Math.min(75, value));
+ try {
+  localStorage.setItem(
+    "ieop-editor-panel-share",
+    String(editorShare)
+  );
+} catch {
+  // Resizing still works if saving is unavailable.
+}
+
+  panelLayout.style.setProperty(
+    "--editor-share",
+    editorShare + "fr"
+  );
+
+  panelLayout.style.setProperty(
+    "--preview-share",
+    (100 - editorShare) + "fr"
+  );
+
+  panelDivider.setAttribute(
+    "aria-valuenow",
+    String(Math.round(editorShare))
+  );
+}
+
+function movePanelDivider(event) {
+  if (!desktopPanels.matches) return;
+
+  const bounds = panelLayout.getBoundingClientRect();
+  const dividerWidth = panelDivider.getBoundingClientRect().width;
+  const availableWidth = bounds.width - dividerWidth;
+
+  if (availableWidth <= 0) return;
+
+  setPanelShare(
+    ((event.clientX - bounds.left - dividerWidth / 2) /
+      availableWidth) * 100
+  );
+}
+
+function stopPanelResize() {
+  const pointerId = resizingPointer;
+  resizingPointer = null;
+
+  document.body.classList.remove("resizing-panels");
+
+  if (
+    pointerId !== null &&
+    panelDivider.hasPointerCapture(pointerId)
+  ) {
+    panelDivider.releasePointerCapture(pointerId);
+  }
+}
+
+panelDivider.addEventListener("pointerdown", event => {
+  if (
+    !desktopPanels.matches ||
+    !event.isPrimary ||
+    event.button !== 0
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+
+  resizingPointer = event.pointerId;
+  panelDivider.setPointerCapture(event.pointerId);
+  panelDivider.focus();
+
+  document.body.classList.add("resizing-panels");
+  movePanelDivider(event);
+});
+
+panelDivider.addEventListener("pointermove", event => {
+  if (event.pointerId === resizingPointer) {
+    movePanelDivider(event);
+  }
+});
+
+panelDivider.addEventListener("pointerup", stopPanelResize);
+panelDivider.addEventListener("pointercancel", stopPanelResize);
+panelDivider.addEventListener("lostpointercapture", stopPanelResize);
+
+window.addEventListener("blur", stopPanelResize);
+
+desktopPanels.addEventListener("change", () => {
+  stopPanelResize();
+});
+
+panelDivider.addEventListener("keydown", event => {
+  if (!desktopPanels.matches) return;
+
+  const step = event.shiftKey ? 10 : 2;
+
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    setPanelShare(editorShare - step);
+  } else if (event.key === "ArrowRight") {
+    event.preventDefault();
+    setPanelShare(editorShare + step);
+  } else if (event.key === "Home") {
+    event.preventDefault();
+    setPanelShare(25);
+  } else if (event.key === "End") {
+    event.preventDefault();
+    setPanelShare(75);
+  }
+});
+
+panelDivider.addEventListener("dblclick", () => {
+  setPanelShare(50);
+});
+
+ setPanelShare(editorShare);
+ $("duplicateProject").onclick = () => {
+  if (busy) return;
+
+  const name = prompt(
+    "Name for the copied project:",
+    current().name + " (copy)"
+  );
+
+  if (!name?.trim()) return;
+
+  mutate(() => {
+    const copy = structuredClone(current());
+
+    copy.id = uid();
+    copy.name = name.trim();
+
+    validateProject(copy);
+
+    state.projects.push(copy);
+    state.activeId = copy.id;
+    activePath = "main.tex";
+  }, "Project duplicated. You are now editing the copy.");
+};
+ let editorFontSize = 14;
+
+try {
+  const savedSize = Number(
+    localStorage.getItem("ieop-editor-font-size")
+  );
+
+  if (Number.isInteger(savedSize) &&
+      savedSize >= 10 && savedSize <= 24) {
+    editorFontSize = savedSize;
+  }
+} catch {
+  // Keep the default if browser storage is unavailable.
+}
+
+function editorLineHeight() {
+  return parseFloat(getComputedStyle($("editor")).lineHeight) || 24;
+}
+
+function applyEditorFontSize() {
+ try {
+  localStorage.setItem(
+    "ieop-editor-font-size",
+    String(editorFontSize)
+  );
+} catch {
+  // Font controls still work if saving is unavailable.
+}
+  const lineHeight = Math.round(editorFontSize * 1.7);
+
+  for (const id of ["editor", "highlight", "lineNumbers"]) {
+    $(id).style.fontSize = editorFontSize + "px";
+    $(id).style.lineHeight = lineHeight + "px";
+  }
+
+  $("fontSizeLabel").textContent = editorFontSize + " px";
+  $("smallerFont").disabled = editorFontSize <= 10;
+  $("largerFont").disabled = editorFontSize >= 24;
+
+  syncEditorScroll();
+}
+
+$("smallerFont").onclick = () => {
+  editorFontSize = Math.max(10, editorFontSize - 1);
+  applyEditorFontSize();
+};
+
+$("largerFont").onclick = () => {
+  editorFontSize = Math.min(24, editorFontSize + 1);
+  applyEditorFontSize();
+};
+
+applyEditorFontSize();
+ $("goToLine").onclick = () => {
+  if (!state || selected()?.kind !== "text") {
+    msg("Open a text file first.", true);
+    return;
+  }
+
+  const editor = $("editor");
+  const lines = editor.value.split("\n");
+
+  const answer = prompt(
+    "Enter a line number from 1 to " + lines.length + ":",
+    "1"
+  );
+
+  if (answer === null) return;
+
+  const lineNumber = Number(answer);
+
+  if (
+    !Number.isInteger(lineNumber) ||
+    lineNumber < 1 ||
+    lineNumber > lines.length
+  ) {
+    msg("Enter a valid line number.", true);
+    return;
+  }
+
+  let position = 0;
+
+  for (let i = 0; i < lineNumber - 1; i++) {
+    position += lines[i].length + 1;
+  }
+
+  editor.focus();
+  editor.setSelectionRange(position, position);
+  editor.scrollTop = Math.max(
+    0,
+    (lineNumber - 3) * editorLineHeight()
+  );
+  editor.scrollLeft = 0;
+
+  syncEditorScroll();
+  updatePosition();
+};
+ $("insertCitation").onclick = () => {
+  if (busy) return;
+
+  if (!state || selected()?.kind !== "text" ||
+      ext(activePath) !== "tex") {
+    msg("Open a .tex file where you want the citation.", true);
+    return;
+  }
+
+  capture();
+
+  const references = new Map();
+
+  for (const file of current().files) {
+    if (file.kind !== "text" || ext(file.path) !== "bib") continue;
+
+    // Read ordinary BibTeX entries; skip comment and string entries.
+    const pattern = /^[ \t]*@([a-zA-Z]+)\s*[{(]\s*([^,\s{}()]+)\s*,/gm;
+
+    for (const match of file.text.matchAll(pattern)) {
+      const type = match[1].toLowerCase();
+      const key = match[2];
+
+      if (["comment", "string", "preamble"].includes(type)) continue;
+
+      // Keep citation keys safe to insert into a LaTeX command.
+      if (!/^[a-zA-Z0-9_:./+-]+$/.test(key)) continue;
+
+      if (!references.has(key)) {
+        references.set(key, file.path);
+      }
+    }
+  }
+
+  const entries = Array.from(references);
+
+  if (!entries.length) {
+    msg("No supported citation keys found. Add references to a .bib file first.", true);
+    return;
+  }
+
+  const choices = entries.map(
+    ([key, path], index) => `${index + 1}. ${key} (${path})`
+  ).join("\n");
+
+  const answer = prompt(
+    "Choose a reference by entering its number:\n\n" + choices,
+    "1"
+  );
+
+  if (answer === null) return;
+
+  const number = Number(answer);
+
+  if (!Number.isInteger(number) ||
+      number < 1 || number > entries.length) {
+    msg("Enter a valid reference number.", true);
+    return;
+  }
+
+  const key = entries[number - 1][0];
+  const editor = $("editor");
+
+  editor.setRangeText(
+    "\\cite{" + key + "}",
+    editor.selectionStart,
+    editor.selectionEnd,
+    "end"
+  );
+
+  editor.oninput();
+  editor.focus();
+
+  msg(
+    "Citation inserted. Ensure main.tex includes the bibliography file, then compile."
+  );
+};
+ let dashboardCategory = "all";
+
+function renderDashboard() {
+  if (!state) return;
+
+  const showingTrash = dashboardCategory === "trash";
+  const query = $("dashboardSearch").value.trim().toLowerCase();
+
+  $("dashboardTitle").textContent = showingTrash
+    ? "Trash"
+    : "All projects";
+
+  $("showAllProjects").removeAttribute("aria-current");
+  $("showTrashProjects").removeAttribute("aria-current");
+
+  $(showingTrash ? "showTrashProjects" : "showAllProjects")
+    .setAttribute("aria-current", "page");
+
+  const projects = (showingTrash ? state.trash : state.projects)
+    .filter(project => project.name.toLowerCase().includes(query));
+
+  const rows = $("dashboardProjectRows");
+  rows.replaceChildren();
+
+  for (const project of projects) {
+    const row = document.createElement("tr");
+
+    const titleCell = document.createElement("td");
+    titleCell.textContent = project.name.trim() || "Untitled project";
+
+    const filesCell = document.createElement("td");
+    filesCell.textContent = String(project.files.length);
+
+    const actionsCell = document.createElement("td");
+    const action = document.createElement("button");
+    action.type = "button";
+    action.disabled = busy;
+    action.textContent = showingTrash ? "Restore" : "Open";
+
+    action.onclick = async () => {
+      if (busy) return;
+
+      if (showingTrash) {
+        await mutate(() => {
+          const index = state.trash.findIndex(
+            item => item.id === project.id
+          );
+
+          if (index < 0) return;
+
+          const restored = state.trash.splice(index, 1)[0];
+          state.projects.push(restored);
+        }, "Project restored.");
+
+        renderDashboard();
+        return;
+      }
+
+      await switchProject(project.id);
+
+      $("projectsDashboard").hidden = true;
+      $("editorWorkspace").hidden = false;
+
+      // Re-align the editor after revealing its panel.
+      requestAnimationFrame(() => {
+        syncEditorScroll();
+        $("projectName").focus();
+      });
+
+      window.scrollTo(0, 0);
+    };
+
+    actionsCell.appendChild(action);
+    row.append(titleCell, filesCell, actionsCell);
+    rows.appendChild(row);
+  }
+
+  $("dashboardEmpty").hidden = projects.length > 0;
+  $("dashboardEmpty").textContent = showingTrash
+    ? "No deleted projects found."
+    : "No projects found.";
+}
+
+async function showProjectsDashboard() {
+  if (busy || !state) return;
+
+  await persist();
+
+  renderDashboard();
+  $("editorWorkspace").hidden = true;
+  $("projectsDashboard").hidden = false;
+
+  window.scrollTo(0, 0);
+}
+
+$("dashboardSearch").addEventListener("input", renderDashboard);
+
+$("showAllProjects").onclick = () => {
+  dashboardCategory = "all";
+  renderDashboard();
+};
 
 $("showTrashProjects").onclick = () => {
   dashboardCategory = "trash";
