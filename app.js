@@ -2196,6 +2196,102 @@ function renderDashboard() {
     };
 
     actionsCell.appendChild(action);
+   if (!showingTrash) {
+  const renameButton = document.createElement("button");
+  renameButton.type = "button";
+  renameButton.textContent = "Rename";
+  renameButton.disabled = busy;
+
+  renameButton.onclick = async () => {
+    if (busy) return;
+
+    const name = prompt("Project name:", project.name);
+    if (!name?.trim()) return;
+
+    await mutate(() => {
+      const target = state.projects.find(
+        item => item.id === project.id
+      );
+
+      if (!target) throw Error("Project no longer exists.");
+      target.name = name.trim();
+    }, "Project renamed.");
+
+    renderDashboard();
+  };
+
+  const duplicateButton = document.createElement("button");
+  duplicateButton.type = "button";
+  duplicateButton.textContent = "Duplicate";
+  duplicateButton.disabled = busy;
+
+  duplicateButton.onclick = async () => {
+    if (busy) return;
+
+    const name = prompt(
+      "Name for the copied project:",
+      project.name + " (copy)"
+    );
+
+    if (!name?.trim()) return;
+
+    await mutate(() => {
+      const target = state.projects.find(
+        item => item.id === project.id
+      );
+
+      if (!target) throw Error("Project no longer exists.");
+
+      const copy = structuredClone(target);
+      copy.id = uid();
+      copy.name = name.trim();
+
+      validateProject(copy);
+      state.projects.push(copy);
+    }, "Project duplicated.");
+
+    renderDashboard();
+  };
+
+  const trashButton = document.createElement("button");
+  trashButton.type = "button";
+  trashButton.textContent = "Move to Trash";
+  trashButton.disabled = busy;
+
+  trashButton.onclick = async () => {
+    if (busy) return;
+
+    if (!confirm('Move "' + project.name + '" to Trash?')) return;
+
+    await mutate(() => {
+      const index = state.projects.findIndex(
+        item => item.id === project.id
+      );
+
+      if (index < 0) throw Error("Project no longer exists.");
+
+      const removed = state.projects.splice(index, 1)[0];
+      state.trash.push(removed);
+
+      if (!state.projects.length) {
+        state.projects.push(newProject("Untitled project"));
+      }
+
+      if (state.activeId === removed.id) {
+        state.activeId = state.projects[0].id;
+        activePath = "main.tex";
+      }
+    }, "Project moved to Trash. You can restore it there.");
+
+    renderDashboard();
+  };
+
+  actionsCell.append(
+    renameButton,
+    duplicateButton,
+    trashButton
+  );
+}
     row.append(titleCell, filesCell, actionsCell);
     rows.appendChild(row);
   }
