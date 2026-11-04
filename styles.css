@@ -1,0 +1,551 @@
+* { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: #eef2f6;
+    color: #203047;
+    font-family: Arial, sans-serif;
+  }
+
+  header {
+    padding: 20px 24px;
+    background: #122b46;
+    color: white;
+  }
+
+  header h1 { margin: 0; font-size: 24px; }
+  header p { margin: 8px 0 0; color: #c4d5e5; }
+
+  .toolbar, .connection {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 24px;
+    background: white;
+    border-bottom: 1px solid #d8e1eb;
+  }
+
+  input {
+    min-width: 160px;
+    padding: 10px;
+    border: 1px solid #cad5e2;
+    border-radius: 6px;
+    font-size: 15px;
+  }
+
+  #projectName { flex: 1; }
+  #token { width: 290px; max-width: 100%; }
+
+  button, .button-link {
+    padding: 11px 16px;
+    border: 1px solid #cad5e2;
+    border-radius: 6px;
+    background: white;
+    color: #203047;
+    font: 14px Arial, sans-serif;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  button:hover, .button-link:hover { background: #edf3f9; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .primary {
+    background: #176b52;
+    border-color: #176b52;
+    color: white;
+  }
+
+  .primary:hover { background: #10533f; }
+
+  :focus-visible {
+    outline: 3px solid #79a9dc;
+    outline-offset: 2px;
+  }
+
+  .notice {
+    padding: 12px 24px;
+    background: #fff6dd;
+    color: #705817;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .hint {
+    color: #526579;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .studio-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .projects-sidebar {
+    padding: 18px 12px;
+    background: #f8fafc;
+    border-right: 1px solid #cad5e2;
+    max-height: 1100px;
+    overflow: auto;
+  }
+
+  .projects-sidebar h2 { margin: 0 0 15px; font-size: 16px; }
+
+  .project-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .project-tools button { padding: 8px; font-size: 12px; }
+
+  #projectList, #fileList {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .project-item {
+    width: 100%;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .project-item.selected {
+    background: #dceee5;
+    border-color: #176b52;
+    color: #10533f;
+    font-weight: bold;
+  }
+
+  .files-heading {
+    margin-top: 25px !important;
+    border-top: 1px solid #cad5e2;
+    padding-top: 18px;
+  }
+
+  #fileList { gap: 5px; max-height: 400px; overflow: auto; }
+
+  .file-item {
+    text-align: left;
+    font-size: 12px;
+    padding: 8px;
+    overflow-wrap: anywhere;
+  }
+
+  .file-item.selected {
+    background: #dceee5;
+    border-color: #176b52;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-width: 0;
+  }
+
+  .panel { min-width: 0; }
+
+  .panel-title {
+    margin: 0;
+    padding: 14px 20px;
+    background: #e4ebf3;
+    font-size: 14px;
+  }
+
+  .preview-panel { border-left: 1px solid #ccd7e3; }
+
+  #pdfViewer {
+    display: block;
+    width: 100%;
+    height: 72vh;
+    min-height: 420px;
+    border: 0;
+    background: #dce3eb;
+  }
+
+  #emptyPreview {
+    padding: 70px 30px;
+    text-align: center;
+    color: #526579;
+    line-height: 1.8;
+  }
+
+  #assetView { padding: 25px; min-height: 420px; }
+  #assetImage { max-width: 100%; max-height: 55vh; object-fit: contain; }
+
+  .code-editor {
+    position: relative;
+    height: 72vh;
+    min-height: 420px;
+    background: #172334;
+    overflow: hidden;
+  }
+
+  .code-editor pre, .code-editor textarea {
+    margin: 0;
+    font: 14px/24px Consolas, "Liberation Mono", monospace;
+    tab-size: 2;
+    letter-spacing: normal;
+  }
+
+  #lineNumbers {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 56px;
+    padding: 22px 10px;
+    overflow: hidden;
+    text-align: right;
+    color: #8193a9;
+    background: #122033;
+    user-select: none;
+    border-right: 1px solid #324257;
+  }
+
+  #highlight {
+    position: absolute;
+    inset: 0 0 0 56px;
+    padding: 22px;
+    overflow: hidden;
+    white-space: pre;
+    pointer-events: none;
+    color: #e2edf8;
+  }
+
+  #editor {
+    position: absolute;
+    inset: 0 0 0 56px;
+    display: block;
+    width: calc(100% - 56px);
+    height: 100%;
+    min-height: 0;
+    padding: 22px;
+    white-space: pre;
+    overflow: auto;
+    resize: none;
+    background: transparent;
+    color: transparent;
+    caret-color: white;
+    -webkit-text-fill-color: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  #editor::selection { background: #42668c99; }
+  #editor:focus-visible { outline: 2px solid #79a9dc; outline-offset: -2px; }
+
+  .tok-command { color: #83c5ff; }
+  .tok-comment { color: #8bad8c; }
+  .tok-brace { color: #e6b977; }
+  .tok-math { color: #e3a5e8; }
+  .tok-entry { color: #75d9c6; }
+
+  .editor-position {
+    padding: 6px 14px;
+    background: #e4ebf3;
+    color: #526579;
+    font-size: 12px;
+  }
+
+  #searchTools { padding: 12px; gap: 8px; }
+  #searchTools input { width: 180px; max-width: 100%; }
+  #searchStatus { color: #526579; font-size: 12px; }
+
+  #compileErrors {
+    border-top: 1px solid #efc5c5;
+    background: #fff1f1;
+  }
+
+  #compileErrors summary {
+    padding: 12px;
+    color: #a32222;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  #compileErrorText {
+    margin: 0;
+    padding: 16px;
+    color: #8b2020;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 260px;
+    overflow: auto;
+    font: 13px/1.6 Consolas, monospace;
+  }
+
+  footer {
+    padding: 15px 24px;
+    background: white;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  #status { white-space: pre-wrap; overflow-wrap: anywhere; }
+  #status.error { color: #a32222; }
+  [hidden] { display: none !important; }
+
+  @media (max-width: 1100px) {
+    .studio-layout { grid-template-columns: 180px minmax(0, 1fr); }
+    main { grid-template-columns: 1fr; }
+    .preview-panel { border-left: none; }
+  }
+
+  @media (max-width: 650px) {
+    .studio-layout { grid-template-columns: 1fr; }
+
+    .projects-sidebar {
+      border-right: none;
+      border-bottom: 1px solid #cad5e2;
+    }
+
+    #projectList { flex-direction: row; flex-wrap: wrap; }
+    .project-item { width: auto; max-width: 100%; }
+    .toolbar, .connection { padding: 12px; }
+  }
+
+  @media (forced-colors: active) {
+    #highlight { visibility: hidden; }
+
+    #editor {
+      color: CanvasText;
+      -webkit-text-fill-color: CanvasText;
+      caret-color: CanvasText;
+    }
+  }
+ /* Resizable editor and PDF panels */
+@media (min-width: 1101px) {
+  main {
+    grid-template-columns:
+      minmax(0, var(--editor-share, 1fr))
+      10px
+      minmax(0, var(--preview-share, 1fr));
+  }
+
+  #panelDivider {
+    background: #cad5e2;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+  }
+
+  #panelDivider:hover,
+  #panelDivider:focus-visible {
+    background: #79a9dc;
+  }
+
+  body.resizing-panels,
+  body.resizing-panels * {
+    cursor: col-resize !important;
+    user-select: none !important;
+  }
+
+  body.resizing-panels #pdfViewer {
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  #panelDivider {
+    display: none;
+  }
+}
+ /* Projects dashboard */
+#projectsDashboard {
+  min-height: 75vh;
+  background: #1c222b;
+  color: #edf1f7;
+}
+
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 75vh;
+}
+
+.dashboard-sidebar {
+  padding: 28px 18px;
+  border-right: 1px solid #374253;
+}
+
+.dashboard-sidebar h2 {
+  margin: 0 0 24px;
+  font-size: 18px;
+}
+
+.dashboard-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-sidebar button {
+  text-align: left;
+  padding: 14px 18px;
+}
+
+#projectsDashboard button {
+  background: #252e3b;
+  border-color: #46536a;
+  color: #edf1f7;
+}
+
+#projectsDashboard button:hover {
+  background: #354258;
+}
+
+#projectsDashboard button[aria-current="page"] {
+  background: #185c40;
+  border-color: #26805a;
+}
+
+#projectsDashboard .primary {
+  background: #078447;
+  border-color: #078447;
+  font-weight: bold;
+}
+
+#projectsDashboard .primary:hover {
+  background: #096c3d;
+}
+
+#projectsDashboard .hint {
+  margin-top: 28px;
+  color: #bac5d4;
+}
+
+.dashboard-content {
+  min-width: 0;
+  margin: 20px;
+  padding: 30px;
+  border-radius: 18px;
+  background: #2e394b;
+}
+
+#dashboardTitle {
+  margin: 0 0 28px;
+  font-size: 30px;
+}
+
+.dashboard-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+#dashboardSearch {
+  flex: 1;
+  min-width: 180px;
+  background: #1c222b;
+  border-color: #718096;
+  color: #edf1f7;
+}
+
+#dashboardSearch::placeholder {
+  color: #aebaca;
+}
+
+.dashboard-table-wrap {
+  overflow-x: auto;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1c222b;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #374253;
+}
+
+.dashboard-table th {
+  color: #cbd5e3;
+}
+
+.dashboard-table td:first-child {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-table td:last-child {
+  min-width: 150px;
+}
+
+.dashboard-table td button {
+  margin: 3px;
+}
+
+@media (max-width: 700px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #374253;
+  }
+
+  .dashboard-sidebar nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-content {
+    margin: 10px;
+    padding: 18px;
+  }
+}
+ #templateDialog {
+  width: min(560px, calc(100% - 32px));
+  max-height: 85vh;
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid #46536a;
+  border-radius: 16px;
+  background: #252e3b;
+  color: #edf1f7;
+}
+
+#templateDialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+
+#templateDialog h2 {
+  margin-top: 0;
+}
+
+#templateDialog p {
+  color: #cbd5e3;
+  line-height: 1.6;
+}
+
+.template-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.template-options button {
+  min-height: 76px;
+  background: #1c222b;
+  color: #edf1f7;
+  border-color: #46536a;
+}
+
+.template-options button:hover {
+  background: #185c40;
+}
+
+@media (max-width: 450px) {
+  .template-options {
+    grid-template-columns: 1fr;
+  }
+}
