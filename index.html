@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IEOP LaTeX Studio</title>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IEOP LaTeX Studio</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -13,7 +12,60 @@
   <h1>IEOP LaTeX Studio</h1>
   <p>A workspace for scientific writing</p>
 </header>
- <section id="projectsDashboard" hidden>
+
+<!-- Account controls: connected in the next step. -->
+<section id="accountBar" class="connection" aria-label="Your account">
+  <strong>Account</strong>
+  <span id="accountStatus" role="status" aria-live="polite">
+    Sign-in setup in progress.
+  </span>
+  <button id="showSignIn" type="button" disabled>Sign in</button>
+  <button id="showSignUp" type="button" disabled>Create account</button>
+  <button id="signOut" type="button" hidden disabled>Sign out</button>
+</section>
+
+<dialog id="authDialog" aria-labelledby="authDialogTitle">
+  <h2 id="authDialogTitle">Sign in</h2>
+
+  <form id="authForm">
+    <p>
+      <label for="authEmail">Email address</label><br>
+      <input
+        id="authEmail"
+        name="email"
+        type="email"
+        autocomplete="email"
+        required
+      >
+    </p>
+
+    <p>
+      <label for="authPassword">Password</label><br>
+      <input
+        id="authPassword"
+        name="password"
+        type="password"
+        autocomplete="current-password"
+        required
+      >
+    </p>
+
+    <p id="authMessage" role="status" aria-live="polite"></p>
+
+    <button id="authSubmit" class="primary" type="submit" disabled>
+      Sign in
+    </button>
+    <button id="authCancel" type="button">Cancel</button>
+  </form>
+
+  <p>
+    <button id="authSwitchMode" type="button" disabled>
+      Create an account instead
+    </button>
+  </p>
+</dialog>
+
+<section id="projectsDashboard" hidden>
   <div class="dashboard-layout">
     <aside class="dashboard-sidebar">
       <h2>Workspace</h2>
@@ -22,7 +74,6 @@
         <button id="showAllProjects" type="button">
           All projects
         </button>
-
         <button id="showTrashProjects" type="button">
           Trash
         </button>
@@ -30,6 +81,7 @@
 
       <p class="hint">
         Projects are currently saved in this browser.
+        Signing in will not automatically upload them.
       </p>
     </aside>
 
@@ -43,7 +95,6 @@
           aria-label="Search projects"
           placeholder="Search your projects..."
         >
-
         <button id="dashboardNewProject" class="primary" type="button">
           New project
         </button>
@@ -59,7 +110,6 @@
               <th scope="col">Actions</th>
             </tr>
           </thead>
-
           <tbody id="dashboardProjectRows"></tbody>
         </table>
       </div>
@@ -68,7 +118,8 @@
     </section>
   </div>
 </section>
- <dialog id="templateDialog" aria-labelledby="templateDialogTitle">
+
+<dialog id="templateDialog" aria-labelledby="templateDialogTitle">
   <h2 id="templateDialogTitle">Create a new project</h2>
   <p>Choose a starting template. You can edit everything afterward.</p>
 
@@ -83,179 +134,240 @@
     <button type="submit">Cancel</button>
   </form>
 </dialog>
+
 <div id="editorWorkspace">
- <div class="toolbar">
-  <button id="backToProjects" type="button">
-    ← Back to projects
-  </button>
-</div>
-<div class="toolbar">
-  <input id="projectName" aria-label="Project name" value="My first document">
-  <button id="importButton">Upload files</button>
-  <button id="folderButton">Upload folder</button>
-  <button id="zipButton">Download project ZIP</button>
-  <button id="sourceButton">Download selected file</button>
-  <button id="compileButton" class="primary">Compile</button>
- <button id="compileChapterButton" type="button">
-  Compile current chapter
-</button>
-  <button id="pdfButton" disabled>Download PDF</button>
-  <a id="openPdf" class="button-link" target="_blank" rel="noopener" hidden>Open PDF</a>
-</div>
+  <div class="toolbar">
+    <button id="backToProjects" type="button">
+      ← Back to projects
+    </button>
+  </div>
 
-<div class="connection">
-  <label for="token">Compiler access token:</label>
-  <input id="token" type="password" placeholder="Enter your private token"
-         autocomplete="off" spellcheck="false">
-  <button id="clearToken">Clear token</button>
-  <span class="hint">
-    The token is not saved by this application. Enter it again after refreshing.
-  </span>
-</div>
+  <div class="toolbar">
+    <input
+      id="projectName"
+      aria-label="Project name"
+      value="My first document"
+    >
+    <button id="importButton" type="button">Upload files</button>
+    <button id="folderButton" type="button">Upload folder</button>
+    <button id="zipButton" type="button">Download project ZIP</button>
+    <button id="sourceButton" type="button">Download selected file</button>
+    <button id="compileButton" class="primary" type="button">Compile</button>
+    <button id="compileChapterButton" type="button">
+      Compile current chapter
+    </button>
+    <button id="pdfButton" type="button" disabled>Download PDF</button>
+    <a
+      id="openPdf"
+      class="button-link"
+      target="_blank"
+      rel="noopener"
+      hidden
+    >Open PDF</a>
+  </div>
 
-<div class="notice">
-  Compile sends all files in the active project to your Render compiler.
-  Use <strong>main.tex</strong> as the entry document.
-  Supports chapters, PNG/JPEG/PDF figures, and BibTeX.
-  Projects save on this device; download backups regularly.
-  Compilation is limited to 45 seconds of server processing.
-  Public user accounts are not connected.
-</div>
+  <div id="compilerConnection" class="connection">
+    <label for="token">Compiler access token:</label>
+    <input
+      id="token"
+      type="password"
+      placeholder="Enter your private token"
+      autocomplete="off"
+      spellcheck="false"
+    >
+    <button id="clearToken" type="button">Clear token</button>
+    <span class="hint">
+      The token is not saved by this application.
+      Enter it again after refreshing.
+    </span>
+  </div>
 
-<div class="studio-layout">
-  <aside class="projects-sidebar" aria-label="Projects">
-    <h2>My projects</h2>
+  <div class="notice">
+    Compile sends all files in the active project to your Render compiler.
+    Use <strong>main.tex</strong> as the entry document.
+    Supports chapters, PNG/JPEG/PDF figures, and BibTeX.
+    Projects save on this device; download backups regularly.
+    Compilation is limited to 45 seconds of server processing.
+    Account access is being connected; compilation currently requires
+    your private compiler token.
+  </div>
 
-    <div class="project-tools">
-      <button id="newProject">+ New project</button>
-      <button id="newBook">+ Book project</button>
-      <button id="renameProject">Rename</button>
-     <button id="duplicateProject" type="button">Duplicate project</button>
-      <button id="deleteProject">Delete</button>
-      <button id="restoreProject">Restore last deleted</button>
-      <button id="backupProjects">Back up projects</button>
-      <button id="importProjects">Import backup</button>
-    </div>
+  <div class="studio-layout">
+    <aside class="projects-sidebar" aria-label="Projects">
+      <h2>My projects</h2>
 
-    <nav id="projectList" aria-label="Choose a project"></nav>
-
-    <h2 class="files-heading">Project files</h2>
-
-    <div class="project-tools">
-      <button id="newFile">+ Text file</button>
-      <button id="addChapter">+ Add chapter</button>
-      <button id="insertFigure">+ Insert figure</button>
-     <button id="insertCitation" type="button">+ Insert citation</button>
-      <button id="renameFile">Rename file</button>
-      <button id="deleteFile">Delete file</button>
-      <button id="restoreFile">Restore file</button>
-    </div>
-
-    <nav id="fileList" aria-label="Choose a file"></nav>
-   <h2 class="files-heading">Book outline</h2>
-
-<button id="refreshOutline" type="button">
-  Refresh outline
-</button>
-
-<nav
-  id="bookOutline"
-  aria-label="Chapters and sections"
-  style="display:flex; flex-direction:column; gap:5px; margin-top:10px;"
-></nav>
-
-<p class="hint">
-  Click a chapter or section to open its source.
-  Refresh the outline after changing headings.
-</p>
-
-    <p class="hint">
-      Files can use paths such as chapters/chapter1.tex or images/figure.png.
-      main.tex always stays at the project root.
-    </p>
-  </aside>
-
-  <main>
-    <section class="panel" aria-label="Source editor">
-      <h2 id="fileTitle" class="panel-title">main.tex</h2>
-     <div class="toolbar">
-  <button id="smallerFont" type="button">A−</button>
-  <span id="fontSizeLabel">14 px</span>
-  <button id="largerFont" type="button">A+</button>
-  <button id="goToLine" type="button">Go to line</button>
-</div>
-
-      <div id="searchTools" class="toolbar">
-        <input id="findText" aria-label="Find text"
-               placeholder="Find in this file" spellcheck="false">
-        <input id="replaceText" aria-label="Replacement text"
-               placeholder="Replace with" spellcheck="false">
-        <button id="findNext">Find next</button>
-        <button id="replaceOne">Replace</button>
-        <button id="replaceAll">Replace all</button>
-        <span id="searchStatus" role="status" aria-live="polite"></span>
+      <div class="project-tools">
+        <button id="newProject" type="button">+ New project</button>
+        <button id="newBook" type="button">+ Book project</button>
+        <button id="renameProject" type="button">Rename</button>
+        <button id="duplicateProject" type="button">Duplicate project</button>
+        <button id="deleteProject" type="button">Delete</button>
+        <button id="restoreProject" type="button">Restore last deleted</button>
+        <button id="backupProjects" type="button">Back up projects</button>
+        <button id="importProjects" type="button">Import backup</button>
       </div>
 
-      <div id="assetView" hidden>
-        <p id="assetInfo"></p>
-        <img id="assetImage" alt="Selected project image" hidden>
-        <button id="downloadAsset">Download selected file</button>
+      <nav id="projectList" aria-label="Choose a project"></nav>
+
+      <h2 class="files-heading">Project files</h2>
+
+      <div class="project-tools">
+        <button id="newFile" type="button">+ Text file</button>
+        <button id="addChapter" type="button">+ Add chapter</button>
+        <button id="insertFigure" type="button">+ Insert figure</button>
+        <button id="insertCitation" type="button">+ Insert citation</button>
+        <button id="renameFile" type="button">Rename file</button>
+        <button id="deleteFile" type="button">Delete file</button>
+        <button id="restoreFile" type="button">Restore file</button>
       </div>
 
-      <div id="codeEditor" class="code-editor">
-        <pre id="lineNumbers" aria-hidden="true">1</pre>
-        <pre id="highlight" aria-hidden="true"></pre>
-        <textarea id="editor" aria-label="LaTeX source"
-                  spellcheck="false" wrap="off" autocapitalize="off"
-                  autocomplete="off" autocorrect="off"></textarea>
-      </div>
+      <nav id="fileList" aria-label="Choose a file"></nav>
 
-      <div id="editorPosition" class="editor-position">Line 1, column 1</div>
+      <h2 class="files-heading">Book outline</h2>
 
-      <details id="compileErrors" hidden>
-        <summary>Compilation error details</summary>
-        <pre id="compileErrorText"></pre>
-      </details>
-    </section>
+      <button id="refreshOutline" type="button">Refresh outline</button>
+
+      <nav
+        id="bookOutline"
+        aria-label="Chapters and sections"
+        style="display:flex; flex-direction:column; gap:5px; margin-top:10px;"
+      ></nav>
+
+      <p class="hint">
+        Click a chapter or section to open its source.
+        Refresh the outline after changing headings.
+      </p>
+
+      <p class="hint">
+        Files can use paths such as chapters/chapter1.tex or images/figure.png.
+        main.tex always stays at the project root.
+      </p>
+    </aside>
+
+    <main>
+      <section class="panel" aria-label="Source editor">
+        <h2 id="fileTitle" class="panel-title">main.tex</h2>
+
+        <div class="toolbar">
+          <button id="smallerFont" type="button">A−</button>
+          <span id="fontSizeLabel">14 px</span>
+          <button id="largerFont" type="button">A+</button>
+          <button id="goToLine" type="button">Go to line</button>
+        </div>
+
+        <div id="searchTools" class="toolbar">
+          <input
+            id="findText"
+            aria-label="Find text"
+            placeholder="Find in this file"
+            spellcheck="false"
+          >
+          <input
+            id="replaceText"
+            aria-label="Replacement text"
+            placeholder="Replace with"
+            spellcheck="false"
+          >
+          <button id="findNext" type="button">Find next</button>
+          <button id="replaceOne" type="button">Replace</button>
+          <button id="replaceAll" type="button">Replace all</button>
+          <span id="searchStatus" role="status" aria-live="polite"></span>
+        </div>
+
+        <div id="assetView" hidden>
+          <p id="assetInfo"></p>
+          <img id="assetImage" alt="Selected project image" hidden>
+          <button id="downloadAsset" type="button">
+            Download selected file
+          </button>
+        </div>
+
+        <div id="codeEditor" class="code-editor">
+          <pre id="lineNumbers" aria-hidden="true">1</pre>
+          <pre id="highlight" aria-hidden="true"></pre>
+          <textarea
+            id="editor"
+            aria-label="LaTeX source"
+            spellcheck="false"
+            wrap="off"
+            autocapitalize="off"
+            autocomplete="off"
+            autocorrect="off"
+          ></textarea>
+        </div>
+
+        <div id="editorPosition" class="editor-position">
+          Line 1, column 1
+        </div>
+
+        <details id="compileErrors" hidden>
+          <summary>Compilation error details</summary>
+          <pre id="compileErrorText"></pre>
+        </details>
+      </section>
+
       <div
-  id="panelDivider"
-  role="separator"
-  aria-label="Resize editor and PDF panels"
-  aria-orientation="vertical"
-  aria-valuemin="25"
-  aria-valuemax="75"
-  aria-valuenow="50"
-  tabindex="0"
-  title="Drag to resize the panels"
-></div>
-    <section class="panel preview-panel" aria-label="PDF preview">
-      <h2 id="previewTitle" class="panel-title">PDF preview</h2>
+        id="panelDivider"
+        role="separator"
+        aria-label="Resize editor and PDF panels"
+        aria-orientation="vertical"
+        aria-valuemin="25"
+        aria-valuemax="75"
+        aria-valuenow="50"
+        tabindex="0"
+        title="Drag to resize the panels"
+      ></div>
 
-      <div id="emptyPreview">
-        <strong>Your compiled PDF will appear here.</strong><br>
-        Enter your compiler token, then click Compile.
-      </div>
+      <section class="panel preview-panel" aria-label="PDF preview">
+        <h2 id="previewTitle" class="panel-title">PDF preview</h2>
 
-      <iframe id="pdfViewer" title="Compiled PDF preview" hidden></iframe>
-    </section>
-  </main>
+        <div id="emptyPreview">
+          <strong>Your compiled PDF will appear here.</strong><br>
+          Enter your compiler token, then click Compile.
+        </div>
+
+        <iframe
+          id="pdfViewer"
+          title="Compiled PDF preview"
+          hidden
+        ></iframe>
+      </section>
+    </main>
+  </div>
 </div>
-</div><!-- End editorWorkspace -->
+
 <footer>
   <div id="status" role="status" aria-live="polite">Workspace ready.</div>
   <div class="hint">
-    Projects save in this browser only. Accounts and cloud project storage
-    are not connected yet. Use Back up projects regularly.
+    Projects save in this browser only.
+    Cloud project storage is not connected yet.
+    Use Back up projects regularly.
   </div>
 </footer>
 
-<input id="fileInput" type="file"
-       accept=".tex,.bib,.bst,.sty,.cls,.png,.jpg,.jpeg,.pdf" multiple hidden>
-<input id="backupInput" type="file" accept=".json,application/json" hidden>
-<input id="folderInput" type="file" webkitdirectory multiple hidden>
+<input
+  id="fileInput"
+  type="file"
+  accept=".tex,.bib,.bst,.sty,.cls,.png,.jpg,.jpeg,.pdf"
+  multiple
+  hidden
+>
+<input
+  id="backupInput"
+  type="file"
+  accept=".json,application/json"
+  hidden
+>
+<input
+  id="folderInput"
+  type="file"
+  webkitdirectory
+  multiple
+  hidden
+>
 
-  <script src="templates.js" defer></script>
+<script src="auth-config.js" defer></script>
+<script src="templates.js" defer></script>
 <script src="app.js" defer></script>
-  
 </body>
 </html>
