@@ -64,7 +64,7 @@
 
     accountStatus.textContent = signedIn
       ? `Signed in as ${session.user.email || "your account"}. Projects remain in this browser.`
-      : "Not signed in. Projects remain in this browser.";
+      : "Account features are under construction. Projects are saved on this device only. Download backups regularly.";
 
     updateButtons();
   }
