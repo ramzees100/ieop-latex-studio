@@ -13,11 +13,10 @@
   <p>A workspace for scientific writing</p>
 </header>
 
-<!-- Account controls: connected in the next step. -->
 <section id="accountBar" class="connection" aria-label="Your account">
   <strong>Account</strong>
   <span id="accountStatus" role="status" aria-live="polite">
-    Sign-in setup in progress.
+    Connecting to sign-in service…
   </span>
   <button id="showSignIn" type="button" disabled>Sign in</button>
   <button id="showSignUp" type="button" disabled>Create account</button>
@@ -35,6 +34,8 @@
         name="email"
         type="email"
         autocomplete="email"
+        autocapitalize="none"
+        spellcheck="false"
         required
       >
     </p>
@@ -46,14 +47,31 @@
         name="password"
         type="password"
         autocomplete="current-password"
+        aria-describedby="passwordHint"
         required
       >
+      <small
+        id="passwordHint"
+        style="display:block; margin-top:8px; line-height:1.5;"
+      >
+        When creating an account, use at least 8 characters.
+      </small>
     </p>
-     <p>
-  <button id="forgotPassword" type="button">
-    Forgot password?
-  </button>
-</p>
+
+    <p>
+      <button
+        id="forgotPassword"
+        type="button"
+        disabled
+        title="Password reset is being connected."
+      >
+        Forgot password?
+      </button>
+      <small style="display:block; margin-top:6px;">
+        Password reset is being connected.
+      </small>
+    </p>
+
     <p id="authMessage" role="status" aria-live="polite"></p>
 
     <button id="authSubmit" class="primary" type="submit" disabled>
@@ -75,12 +93,8 @@
       <h2>Workspace</h2>
 
       <nav aria-label="Project categories">
-        <button id="showAllProjects" type="button">
-          All projects
-        </button>
-        <button id="showTrashProjects" type="button">
-          Trash
-        </button>
+        <button id="showAllProjects" type="button">All projects</button>
+        <button id="showTrashProjects" type="button">Trash</button>
       </nav>
 
       <p class="hint">
@@ -192,8 +206,8 @@
     Supports chapters, PNG/JPEG/PDF figures, and BibTeX.
     Projects save on this device; download backups regularly.
     Compilation is limited to 45 seconds of server processing.
-    Account access is being connected; compilation currently requires
-    your private compiler token.
+    Compilation currently requires your private compiler token.
+    Signing in does not yet enable compiler access or cloud project storage.
   </div>
 
   <div class="studio-layout">
@@ -228,7 +242,6 @@
       <nav id="fileList" aria-label="Choose a file"></nav>
 
       <h2 class="files-heading">Book outline</h2>
-
       <button id="refreshOutline" type="button">Refresh outline</button>
 
       <nav
@@ -369,6 +382,7 @@
   multiple
   hidden
 >
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="auth-config.js" defer></script>
 <script src="templates.js" defer></script>
